@@ -3,7 +3,7 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Questiongo - Pergunte, Responda, Ganhe",
+  title: "Questiongo",
   description: "Plataforma que conecta quem tem dúvidas com especialistas. Faça perguntas ou ganhe dinheiro respondendo.",
 };
 
