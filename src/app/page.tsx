@@ -81,11 +81,29 @@ export default function LandingPage() {
       await loginWithGoogle();
       router.push("/home");
     } catch (error: unknown) {
-      const firebaseError = error as { code?: string };
-      if (firebaseError.code !== "auth/cancelled-popup-request" &&
-          firebaseError.code !== "auth/popup-closed-by-user") {
-        console.error("Erro ao fazer login com Google:", error);
+      const firebaseError = error as { code?: string; message?: string };
+      console.error("Erro ao fazer login com Google:", error);
+
+      // Ignorar erros de cancelamento pelo usuário
+      if (firebaseError.code === "auth/cancelled-popup-request" ||
+          firebaseError.code === "auth/popup-closed-by-user") {
+        return;
       }
+
+      // Mapear erros do Firebase para mensagens amigáveis
+      const errorMessages: Record<string, string> = {
+        "auth/popup-blocked": "Pop-up bloqueado. Permita pop-ups para este site.",
+        "auth/network-request-failed": "Erro de conexão. Verifique sua internet.",
+        "auth/unauthorized-domain": "Domínio não autorizado. Configure o Firebase Console.",
+        "auth/operation-not-allowed": "Login com Google não está habilitado.",
+        "auth/internal-error": "Erro interno. Tente novamente.",
+      };
+
+      const errorMessage = firebaseError.code
+        ? errorMessages[firebaseError.code] || `Erro: ${firebaseError.code}`
+        : "Erro ao fazer login. Tente novamente.";
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
