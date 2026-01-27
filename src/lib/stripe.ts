@@ -3,13 +3,29 @@
 
 import Stripe from 'stripe';
 
-// Inicializa o cliente Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-12-15.clover',
-  typescript: true,
-});
+// Inicialização lazy do cliente Stripe para evitar erro durante build
+let stripeInstance: Stripe | null = null;
 
-export { stripe };
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY não configurada');
+    }
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2025-12-15.clover',
+      typescript: true,
+    });
+  }
+  return stripeInstance;
+}
+
+// Exporta getter ao invés da instância direta
+export const stripe = new Proxy({} as Stripe, {
+  get(_, prop) {
+    return getStripe()[prop as keyof Stripe];
+  },
+});
 
 // Tipos para pagamento
 export interface StripePaymentData {
