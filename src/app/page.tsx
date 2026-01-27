@@ -232,7 +232,7 @@ export default function LandingPage() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-[#e5e5e5]">
         <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
           <a href="#" className="flex items-center gap-2 font-bold text-lg">
-            <img src="/logo.svg" alt="Questiongo" className="w-7 h-7" />
+            <img src="/logo.svg" alt="Questiongo" className="w-9 h-9" />
             Questiongo
           </a>
 
