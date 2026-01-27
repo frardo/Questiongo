@@ -1,0 +1,118 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { criarCobranca } from '@/lib/abacatepay';
+import { criarCheckoutSession } from '@/lib/stripe';
+import { verifyAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { criarPagamentoSchema, validateBody } from '@/lib/validations';
+
+// Inicializar Firebase Admin se ainda não foi inicializado
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
+
+const adminDb = getFirestore();
+
+export async function POST(request: NextRequest) {
+  try {
+    // Verificar autenticação
+    const authUser = await verifyAuth(request);
+    if (!authUser) {
+      return unauthorizedResponse('Token de autenticação inválido');
+    }
+
+    const body = await request.json();
+
+    // Validar dados de entrada com Zod
+    const validation = validateBody(criarPagamentoSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
+    const {
+      perguntaId,
+      respostaId,
+      valor,
+      usuarioNome,
+      usuarioEmail,
+      respondedorId,
+      metodoPagamento,
+    } = validation.data;
+
+    // Verificar se o usuário é o dono da pergunta (prevenção de IDOR)
+    const perguntaDoc = await adminDb.collection('perguntas').doc(perguntaId).get();
+    if (!perguntaDoc.exists) {
+      return NextResponse.json({ error: 'Pergunta não encontrada' }, { status: 404 });
+    }
+
+    const pergunta = perguntaDoc.data();
+    if (pergunta?.usuarioId !== authUser.uid) {
+      return forbiddenResponse('Você só pode pagar por respostas às suas próprias perguntas');
+    }
+
+    // Usar Stripe para cartão, AbacatePay para PIX
+    if (metodoPagamento === 'cartao') {
+      // Pagamento com cartão via Stripe
+      const session = await criarCheckoutSession({
+        perguntaId,
+        respostaId,
+        valor,
+        usuarioNome: usuarioNome || '',
+        usuarioEmail: usuarioEmail || '',
+        respondedorId: respondedorId || '',
+      });
+
+      return NextResponse.json({
+        success: true,
+        url: session.url,
+        sessionId: session.sessionId,
+        gateway: 'stripe',
+        metodo: 'cartao',
+      });
+    } else {
+      // Pagamento com PIX via AbacatePay
+      const cobranca = await criarCobranca({
+        frequency: 'ONE_TIME',
+        methods: ['PIX'],
+        products: [
+          {
+            externalId: respostaId,
+            name: 'Resposta de Pergunta',
+            description: `Pagamento pela resposta à pergunta #${perguntaId}`,
+            quantity: 1,
+            price: Math.round(valor * 100), // Converter para centavos
+          },
+        ],
+        returnUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/pergunta/${perguntaId}`,
+        completionUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/pergunta/${perguntaId}?pagamento=sucesso`,
+        metadata: {
+          perguntaId,
+          respostaId,
+          usuarioNome: usuarioNome || '',
+          usuarioEmail: usuarioEmail || '',
+          respondedorId: respondedorId || '',
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        url: cobranca.url,
+        billingId: cobranca.id,
+        gateway: 'abacatepay',
+        metodo: 'pix',
+      });
+    }
+  } catch (error) {
+    console.error('Erro ao criar cobrança:', error);
+    return NextResponse.json(
+      { error: 'Erro ao criar cobrança. Tente novamente.' },
+      { status: 500 }
+    );
+  }
+}

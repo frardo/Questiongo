@@ -844,3 +844,64 @@ export const buscarPreferenciaGateway = async (
   }
   return null;
 };
+
+// ==================== CONTA BANCÁRIA PARA RECEBIMENTO ====================
+
+// Tipos de Conta Bancária
+export interface ContaBancaria {
+  usuarioId: string;
+  banco: string;
+  bancoNome: string;
+  agencia: string;
+  conta: string;
+  digito: string;
+  tipoConta: 'corrente' | 'poupanca';
+  titularNome: string;
+  titularCpf: string;
+  atualizadoEm: Timestamp;
+}
+
+// Salvar conta bancária
+export const salvarContaBancaria = async (
+  dados: Omit<ContaBancaria, 'atualizadoEm'>
+): Promise<void> => {
+  const docRef = doc(db, 'contasBancarias', dados.usuarioId);
+  await setDoc(docRef, {
+    ...dados,
+    atualizadoEm: Timestamp.now(),
+  });
+};
+
+// Buscar conta bancária do usuário
+export const buscarContaBancaria = async (
+  usuarioId: string
+): Promise<ContaBancaria | null> => {
+  const docRef = doc(db, 'contasBancarias', usuarioId);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    return docSnap.data() as ContaBancaria;
+  }
+  return null;
+};
+
+// Interface de Denúncia
+export interface Denuncia {
+  id?: string;
+  perguntaId: string;
+  denuncianteId: string;
+  denuncianteNome: string;
+  motivo?: string;
+  status: 'pendente' | 'analisando' | 'resolvida' | 'rejeitada';
+  criadoEm: Timestamp;
+}
+
+// Criar denúncia
+export const criarDenuncia = async (denuncia: Omit<Denuncia, 'id' | 'criadoEm' | 'status'>) => {
+  const docRef = await addDoc(collection(db, 'denuncias'), {
+    ...denuncia,
+    status: 'pendente',
+    criadoEm: Timestamp.now(),
+  });
+  return docRef.id;
+};

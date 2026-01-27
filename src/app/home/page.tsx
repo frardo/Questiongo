@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { auth, criarPergunta, buscarPerguntas, uploadArquivos, uploadArquivo, atualizarFotoPerfil, Pergunta, salvarPergunta, removerPerguntaSalva, verificarPerguntaSalva, buscarRanking, buscarMinhasStats, UserStats, buscarNotificacoes, Notificacao, buscarSaldo, Saldo } from "@/lib/firebase";
+import { auth, criarPergunta, buscarPerguntas, uploadArquivos, uploadArquivo, atualizarFotoPerfil, Pergunta, salvarPergunta, removerPerguntaSalva, verificarPerguntaSalva, buscarRanking, buscarMinhasStats, UserStats, buscarNotificacoes, Notificacao, buscarSaldo, Saldo, criarDenuncia } from "@/lib/firebase";
 import { MoreVerticalIcon, Calendar03Icon, CrownIcon, ArrowDown01Icon, Settings01Icon, Logout01Icon, CompassIcon, MessageQuestionIcon, PencilEdit02Icon, MoneyBag02Icon, Bookmark02Icon, Cancel01Icon, Attachment01Icon, InformationCircleIcon, Wallet02Icon, Mail01Icon, CheckmarkCircle02Icon, RankingIcon, Camera01Icon } from "hugeicons-react";
 import { Books, Calculator, Bank, Globe, Dna, PencilLine, Atom, Flask, Brain, Users, Briefcase, GraduationCap, Translate, Palette, FirstAidKit, SoccerBall, ChartLine, Scales, Desktop, PuzzlePiece, Sparkle, MusicNotes, Wrench, House, Question, NotePencil, Wallet, BookmarkSimple, GearSix } from "@phosphor-icons/react";
 import FooterPremium from "@/components/FooterPremium";
+import toast from "react-hot-toast";
 
 export default function Home() {
   const router = useRouter();
@@ -61,12 +62,12 @@ export default function Home() {
     if (arquivo) {
       // Validar tipo de arquivo
       if (!arquivo.type.startsWith('image/')) {
-        alert('Por favor, selecione apenas imagens.');
+        toast.error('Por favor, selecione apenas imagens.');
         return;
       }
       // Validar tamanho (max 5MB)
       if (arquivo.size > 5 * 1024 * 1024) {
-        alert('A imagem deve ter no máximo 5MB.');
+        toast.error('A imagem deve ter no máximo 5MB.');
         return;
       }
       setArquivoFoto(arquivo);
@@ -90,9 +91,8 @@ export default function Home() {
       setPreviewFoto(null);
       // Recarregar página para atualizar a foto em todos os lugares
       window.location.reload();
-    } catch (error) {
-      console.error('Erro ao atualizar foto:', error);
-      alert('Erro ao atualizar foto. Tente novamente.');
+    } catch {
+      toast.error('Erro ao atualizar foto. Tente novamente.');
     } finally {
       setUploadingFoto(false);
     }
@@ -132,9 +132,7 @@ export default function Home() {
     const carregarSaldo = async () => {
       if (!user) return;
       try {
-        console.log("Buscando saldo para usuário:", user.uid);
         const saldoData = await buscarSaldo(user.uid);
-        console.log("Saldo encontrado:", saldoData);
         setSaldo(saldoData);
       } catch (error) {
         console.error("Erro ao carregar saldo:", error);
@@ -436,15 +434,15 @@ export default function Home() {
 
   const handleEnviarPergunta = async () => {
     if (!textoPergunta.trim() || !materiaSelecionada) {
-      alert("Preencha a pergunta e selecione a matéria");
+      toast.error("Preencha a pergunta e selecione a matéria");
       return;
     }
     if (!user) {
-      alert("Você precisa estar logado para fazer uma pergunta");
+      toast.error("Você precisa estar logado para fazer uma pergunta");
       return;
     }
     if (valorSelecionado < 1) {
-      alert("O valor deve ser pelo menos R$ 1,00");
+      toast.error("O valor deve ser pelo menos R$ 1,00");
       return;
     }
 
@@ -506,9 +504,8 @@ export default function Home() {
       setNivelSelecionado("");
       setValorSelecionado(10);
       setArquivosAnexados([]);
-    } catch (error) {
-      console.error("Erro ao enviar pergunta:", error);
-      alert("Erro ao enviar pergunta. Tente novamente.");
+    } catch {
+      toast.error("Erro ao enviar pergunta. Tente novamente.");
     } finally {
       setEnviandoPergunta(false);
     }
@@ -520,7 +517,7 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 z-50 py-4 border-b border-gray-100 px-6 flex justify-between items-center bg-white">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="Questiongo" className="h-11 w-auto" />
+          <img src="/logo.svg" alt="Questiongo" className="h-11 w-auto" />
           <span className="text-2xl text-gray-900" style={{ fontFamily: "'Figtree Black', sans-serif" }}>Questiongo</span>
         </div>
 
@@ -808,11 +805,11 @@ export default function Home() {
           <div className="flex-1 mr-6">
             {/* Header com título e filtros */}
             <div className="mb-6">
-              <h1 className="mb-2" style={{ fontFamily: "'Figtree Black', sans-serif", color: '#000000', fontSize: '53px' }}>
-                Questões e respostas
+              <h1 className="mb-2" style={{ fontFamily: "'Figtree Black', sans-serif", color: '#0F1A45', fontSize: '53px' }}>
+                Respostas para
               </h1>
-              <h2 className="mb-6" style={{ fontFamily: "'Figtree Black', sans-serif", color: '#000000', fontSize: '53px' }}>
-                para todas as matérias
+              <h2 className="mb-6" style={{ fontFamily: "'Figtree Black', sans-serif", color: '#0F1A45', fontSize: '53px' }}>
+                qualquer disciplina
               </h2>
               <button
                 onClick={() => setModalPerguntaAberto(true)}
@@ -832,7 +829,7 @@ export default function Home() {
                 <select
                   value={nivelFiltro}
                   onChange={(e) => setNivelFiltro(e.target.value)}
-                  className="appearance-none bg-gray-100 text-gray-700 font-medium px-6 py-3 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  className="appearance-none bg-gray-100 text-gray-700 font-medium px-6 py-3 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF4F00] cursor-pointer"
                   style={{ fontFamily: "'Figtree Medium', sans-serif" }}
                 >
                   <option value="todos">Todos os níveis</option>
@@ -847,7 +844,7 @@ export default function Home() {
                 <select
                   value={statusFiltro}
                   onChange={(e) => setStatusFiltro(e.target.value)}
-                  className="appearance-none bg-gray-100 text-gray-700 font-medium px-6 py-3 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  className="appearance-none bg-gray-100 text-gray-700 font-medium px-6 py-3 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF4F00] cursor-pointer"
                   style={{ fontFamily: "'Figtree Medium', sans-serif" }}
                 >
                   <option value="sem_resposta">Sem Resposta</option>
@@ -859,7 +856,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl">
+            <div>
               {carregando ? (
                 <div className="p-8 text-center text-gray-500">
                   Carregando perguntas...
@@ -901,7 +898,8 @@ export default function Home() {
                   </div>
                 ) : (
                   perguntasFiltradas.map((item, index) => (
-                    <div key={item.id} className={`p-4 relative ${index !== perguntasFiltradas.length - 1 ? 'border-b border-gray-200' : ''}`}>
+                    <div key={item.id} className={`py-4 relative ${index !== perguntasFiltradas.length - 1 ? 'border-b border-gray-200' : ''}`}>
+                      <div className="px-4">
                     {/* Pill de valor e botão salvar no canto superior direito */}
                     <div className="absolute top-4 right-4 flex items-center gap-2">
                       <button
@@ -983,8 +981,18 @@ export default function Home() {
                             {menuAberto === item.id && (
                               <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10">
                                 <button
-                                  onClick={() => {
-                                    alert("Denúncia enviada!");
+                                  onClick={async () => {
+                                    if (!user || !item.id) return;
+                                    try {
+                                      await criarDenuncia({
+                                        perguntaId: item.id,
+                                        denuncianteId: user.uid,
+                                        denuncianteNome: user.displayName || 'Usuário',
+                                      });
+                                      toast.success("Denúncia enviada! Vamos analisar.");
+                                    } catch {
+                                      toast.error("Erro ao enviar denúncia. Tente novamente.");
+                                    }
                                     setMenuAberto(null);
                                   }}
                                   className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left cursor-pointer"
@@ -1006,6 +1014,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
+                      </div>
                   </div>
                   ))
                 );
@@ -1216,7 +1225,7 @@ export default function Home() {
                 value={textoPergunta}
                 onChange={(e) => setTextoPergunta(e.target.value)}
                 placeholder="Escreva sua pergunta aqui. (Para conseguir uma ótima resposta, descreva sua dúvida de forma simples e clara)"
-                className="w-full h-44 p-4 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                className="w-full h-44 p-4 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#FF4F00] focus:border-transparent text-gray-900 placeholder-gray-400"
                 style={{ fontFamily: "'Figtree Medium', sans-serif" }}
               />
 
@@ -1338,7 +1347,7 @@ export default function Home() {
                   <select
                     value={nivelSelecionado}
                     onChange={(e) => setNivelSelecionado(e.target.value)}
-                    className="appearance-none bg-gray-100 text-gray-700 px-4 py-2.5 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    className="appearance-none bg-gray-100 text-gray-700 px-4 py-2.5 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF4F00] cursor-pointer"
                     style={{ fontFamily: "'Figtree Medium', sans-serif" }}
                   >
                     <option value="">Nível</option>
@@ -1501,7 +1510,7 @@ export default function Home() {
                   value={equacaoModal}
                   onChange={(e) => setEquacaoModal(e.target.value)}
                   placeholder="Digite uma equação... Ex: x² + 2x + 1 = 0"
-                  className="w-full min-h-[150px] p-4 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400 text-lg"
+                  className="w-full min-h-[150px] p-4 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#FF4F00] focus:border-transparent text-gray-900 placeholder-gray-400 text-lg"
                   style={{ fontFamily: "'Figtree Medium', sans-serif" }}
                   autoFocus
                 />

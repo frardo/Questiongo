@@ -1,0 +1,271 @@
+@import "tailwindcss";
+
+/* ============================================
+   FIGTREE FONT FACES - Cada variação como família separada
+   ============================================ */
+
+@font-face {
+  font-family: 'Figtree Light';
+  src: url('/fonts/Figtree-Light.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Figtree Regular';
+  src: url('/fonts/Figtree-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Figtree Medium';
+  src: url('/fonts/Figtree-Medium.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Figtree SemiBold';
+  src: url('/fonts/Figtree-SemiBold.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Figtree Bold';
+  src: url('/fonts/Figtree-Bold.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Figtree ExtraBold';
+  src: url('/fonts/Figtree-ExtraBold.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Figtree Black';
+  src: url('/fonts/Figtree-Black.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica';
+  src: url('/fonts/Helvetica.ttf') format('truetype');
+  font-display: swap;
+}
+
+/* ============================================
+   CSS VARIABLES
+   ============================================ */
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Font Families */
+  --font-light: 'Figtree Light', sans-serif;
+  --font-regular: 'Figtree Regular', sans-serif;
+  --font-medium: 'Figtree Medium', sans-serif;
+  --font-semibold: 'Figtree SemiBold', sans-serif;
+  --font-bold: 'Figtree Bold', sans-serif;
+  --font-extrabold: 'Figtree ExtraBold', sans-serif;
+  --font-black: 'Figtree Black', sans-serif;
+  --font-helvetica: 'Helvetica', Arial, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Figtree Regular', sans-serif;
+  --font-light: 'Figtree Light', sans-serif;
+  --font-regular: 'Figtree Regular', sans-serif;
+  --font-medium: 'Figtree Medium', sans-serif;
+  --font-semibold: 'Figtree SemiBold', sans-serif;
+  --font-bold: 'Figtree Bold', sans-serif;
+  --font-extrabold: 'Figtree ExtraBold', sans-serif;
+  --font-black: 'Figtree Black', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Figtree Regular', sans-serif;
+}
+
+/* ============================================
+   UTILITY CLASSES - Usar font-family diretamente
+   ============================================ */
+
+.font-light { font-family: 'Figtree Light', sans-serif !important; }
+.font-regular { font-family: 'Figtree Regular', sans-serif !important; }
+.font-medium { font-family: 'Figtree Medium', sans-serif !important; }
+.font-semibold { font-family: 'Figtree SemiBold', sans-serif !important; }
+.font-bold { font-family: 'Figtree Bold', sans-serif !important; }
+.font-extrabold { font-family: 'Figtree ExtraBold', sans-serif !important; }
+.font-black { font-family: 'Figtree Black', sans-serif !important; }
+
+/* ============================================
+   TYPOGRAPHY SYSTEM
+   ============================================ */
+
+/* Display - Para títulos hero/grandes */
+.text-display {
+  font-family: var(--font-black);
+  font-size: 3rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+/* H1 - Títulos principais */
+h1, .text-h1 {
+  font-family: var(--font-black);
+  font-size: 2.25rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* H2 - Subtítulos de seção */
+h2, .text-h2 {
+  font-family: var(--font-extrabold);
+  font-size: 1.875rem;
+  line-height: 1.25;
+}
+
+/* H3 - Títulos de cards/blocos */
+h3, .text-h3 {
+  font-family: var(--font-bold);
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+/* H4 - Subtítulos menores */
+h4, .text-h4 {
+  font-family: var(--font-semibold);
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+/* H5 - Labels/títulos pequenos */
+h5, .text-h5 {
+  font-family: var(--font-semibold);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+/* H6 - Micro títulos */
+h6, .text-h6 {
+  font-family: var(--font-medium);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Body Large */
+.text-body-lg {
+  font-family: var(--font-regular);
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+/* Body Regular */
+.text-body, p {
+  font-family: var(--font-regular);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* Body Small */
+.text-body-sm {
+  font-family: var(--font-regular);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Caption/Helper text */
+.text-caption {
+  font-family: var(--font-regular);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+/* Label - Para inputs, botões */
+.text-label {
+  font-family: var(--font-medium);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* Button text */
+.text-button {
+  font-family: var(--font-bold);
+  font-size: 0.875rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+/* Overline - Para categorias, tags */
+.text-overline {
+  font-family: var(--font-semibold);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ============================================
+   RICH TEXT EDITOR STYLES
+   ============================================ */
+
+[contenteditable] h1 {
+  font-family: var(--font-black);
+  font-size: 1.75rem;
+  margin: 0.5rem 0;
+  line-height: 1.3;
+}
+
+[contenteditable] h2 {
+  font-family: var(--font-bold);
+  font-size: 1.35rem;
+  margin: 0.4rem 0;
+  line-height: 1.3;
+}
+
+[contenteditable] ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+[contenteditable] ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+[contenteditable] li {
+  margin: 0.25rem 0;
+}
+
+[contenteditable] b,
+[contenteditable] strong {
+  font-family: var(--font-bold);
+}
+
+[contenteditable] i,
+[contenteditable] em {
+  font-style: italic;
+}
+
+[contenteditable] u {
+  text-decoration: underline;
+}
