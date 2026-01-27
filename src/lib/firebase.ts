@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, Auth } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, Auth, signInWithPopup, onAuthStateChanged, signOut, User } from "firebase/auth";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, doc, updateDoc, deleteDoc, getDoc, where, setDoc, limit, Firestore } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
 
@@ -76,6 +76,32 @@ export const loginWithEmail = (email: string, password: string) => {
 export const registerWithEmail = (email: string, password: string) => {
   if (!_auth) _auth = getAuth(getApp());
   return createUserWithEmailAndPassword(_auth, email, password);
+};
+
+// Login com Google
+export const loginWithGoogle = () => {
+  if (!_auth) _auth = getAuth(getApp());
+  if (!_googleProvider) _googleProvider = new GoogleAuthProvider();
+  return signInWithPopup(_auth, _googleProvider);
+};
+
+// Login com Apple
+export const loginWithApple = () => {
+  if (!_auth) _auth = getAuth(getApp());
+  if (!_appleProvider) _appleProvider = new OAuthProvider('apple.com');
+  return signInWithPopup(_auth, _appleProvider);
+};
+
+// Logout
+export const logout = () => {
+  if (!_auth) _auth = getAuth(getApp());
+  return signOut(_auth);
+};
+
+// Observer de autenticação
+export const onAuthChange = (callback: (user: User | null) => void) => {
+  if (!_auth) _auth = getAuth(getApp());
+  return onAuthStateChanged(_auth, callback);
 };
 
 // Atualizar foto de perfil do usuário

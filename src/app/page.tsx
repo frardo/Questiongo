@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider, appleProvider, loginWithEmail, registerWithEmail } from "@/lib/firebase";
+import { loginWithGoogle, loginWithApple, loginWithEmail, registerWithEmail } from "@/lib/firebase";
 
 const ALLOWED_DOMAINS = [
   "gmail.com",
@@ -79,7 +78,7 @@ export default function LandingPage() {
     setLoading(true);
     setError("");
     try {
-      await signInWithPopup(auth, googleProvider);
+      await loginWithGoogle();
       router.push("/home");
     } catch (error: unknown) {
       const firebaseError = error as { code?: string };
@@ -97,7 +96,7 @@ export default function LandingPage() {
     setLoading(true);
     setError("");
     try {
-      await signInWithPopup(auth, appleProvider);
+      await loginWithApple();
       router.push("/home");
     } catch (error: unknown) {
       const firebaseError = error as { code?: string };
