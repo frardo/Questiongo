@@ -19,7 +19,15 @@
       "Bash(git config:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Adicionar filtros de Nível e Status na área de mercado\n\n- Adicionar campo ''nivel'' à interface Pergunta \\(fundamental/medio/superior\\)\n- Adicionar estados nivelFiltro, statusFiltro e nivelSelecionado\n- Conectar dropdowns de filtro aos estados\n- Implementar lógica de filtragem para matéria, nível e status\n- Adicionar dropdown de nível no modal de criar pergunta\n- Atualizar handleEnviarPergunta para incluir nível\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(curl:*)",
-      "WebFetch(domain:abacatepay.readme.io)"
+      "WebFetch(domain:abacatepay.readme.io)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(vercel --prod:*)",
+      "Bash(npx vercel --prod)",
+      "WebFetch(domain:www.questiongo.com)",
+      "Bash(git push:*)"
     ]
   }
 }

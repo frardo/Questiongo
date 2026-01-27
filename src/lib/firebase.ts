@@ -80,8 +80,15 @@ export const registerWithEmail = (email: string, password: string) => {
 
 // Login com Google
 export const loginWithGoogle = () => {
+  console.log("[DEBUG Firebase] loginWithGoogle chamado");
+  console.log("[DEBUG Firebase] Config:", {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? "✓ definida" : "✗ FALTANDO",
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "✗ FALTANDO",
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "✗ FALTANDO",
+  });
   if (!_auth) _auth = getAuth(getApp());
   if (!_googleProvider) _googleProvider = new GoogleAuthProvider();
+  console.log("[DEBUG Firebase] Abrindo popup...");
   return signInWithPopup(_auth, _googleProvider);
 };
 
