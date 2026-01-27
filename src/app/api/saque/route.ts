@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { criarSaque } from '@/lib/abacatepay';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, addDoc, collection, Timestamp } from 'firebase/firestore';
+import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyAuth, unauthorizedResponse, forbiddenResponse, isResourceOwner } from '@/lib/auth';
 import { saqueSchema, validateBody } from '@/lib/validations';
 import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    const adminDb = getAdminDb();
+
     // Rate limiting (mais restritivo para saques)
     const clientIP = getClientIP(request);
     const rateLimit = checkRateLimit({
@@ -49,14 +50,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar saldo do usuário no Firebase
-    const saldoRef = doc(db, 'saldos', usuarioId);
-    const saldoDoc = await getDoc(saldoRef);
+    const saldoRef = adminDb.collection('saldos').doc(usuarioId);
+    const saldoDoc = await saldoRef.get();
 
-    if (!saldoDoc.exists()) {
+    if (!saldoDoc.exists) {
       return NextResponse.json({ error: 'Saldo não encontrado' }, { status: 404 });
     }
 
-    const saldoAtual = saldoDoc.data();
+    const saldoAtual = saldoDoc.data()!;
 
     if (saldoAtual.saldoDisponivel < valor) {
       return NextResponse.json({ error: 'Saldo insuficiente' }, { status: 400 });
@@ -81,14 +82,14 @@ export async function POST(request: NextRequest) {
         });
 
         // Atualizar saldo do usuário (deduzir valor total)
-        await updateDoc(saldoRef, {
+        await saldoRef.update({
           saldoDisponivel: saldoAtual.saldoDisponivel - valor,
           totalSacado: (saldoAtual.totalSacado || 0) + valor,
-          ultimaAtualizacao: Timestamp.now()
+          ultimaAtualizacao: new Date(),
         });
 
         // Registrar transação do saque
-        await addDoc(collection(db, 'transacoes'), {
+        await adminDb.collection('transacoes').add({
           usuarioId,
           tipo: 'debito',
           valor: valor, // Valor total debitado do saldo
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
           gatewayId: saque.id,
           chavePix,
           tipoChave,
-          criadoEm: Timestamp.now()
+          criadoEm: new Date(),
         });
 
         return NextResponse.json({
