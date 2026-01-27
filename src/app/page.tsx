@@ -1071,7 +1071,7 @@ export default function LandingPage() {
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {features.map((feature, i) => (
             <div key={i} className="p-6">
-              <div className="w-16 h-16 mb-5 rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="w-28 h-28 mb-5 rounded-lg flex items-center justify-center overflow-hidden">
                 <img
                   src={`/cube${i + 1}.svg`}
                   alt={feature.title}
