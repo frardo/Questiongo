@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getAdminDb } from '@/lib/firebase-admin';
 import { enviarEmailPagamentoRecebido, enviarEmailPagamentoConfirmado } from '@/lib/email';
 import { verifyAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { verificarPagamentoSchema, validateBody } from '@/lib/validations';
 import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
-
-// Inicializar Firebase Admin
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
-
-const adminDb = getFirestore();
 
 // Verificar status do pagamento na AbacatePay
 async function verificarPagamentoAbacatePay(billingId: string) {
@@ -41,6 +27,8 @@ async function verificarPagamentoAbacatePay(billingId: string) {
 
 export async function POST(request: NextRequest) {
   try {
+    const adminDb = getAdminDb();
+
     // Rate limiting
     const clientIP = getClientIP(request);
     const rateLimit = checkRateLimit({
@@ -172,6 +160,8 @@ export async function POST(request: NextRequest) {
 }
 
 async function processarPagamento(perguntaId: string, respostaId: string, amountCents: number) {
+  const adminDb = getAdminDb();
+
   // Atualizar resposta como aceita
   await adminDb.collection('respostas').doc(respostaId).update({
     status: 'aceita',

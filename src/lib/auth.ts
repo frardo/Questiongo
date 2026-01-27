@@ -1,22 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-
-// Inicializar Firebase Admin uma única vez
-let adminApp: App;
-
-function getAdminApp(): App {
-  if (!getApps().length) {
-    adminApp = initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-  }
-  return adminApp || getApps()[0];
-}
+import { getAdminAuth } from '@/lib/firebase-admin';
 
 export interface AuthUser {
   uid: string;
@@ -43,8 +26,7 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
       return null;
     }
 
-    const app = getAdminApp();
-    const auth = getAuth(app);
+    const auth = getAdminAuth();
     const decodedToken = await auth.verifyIdToken(token);
 
     return {

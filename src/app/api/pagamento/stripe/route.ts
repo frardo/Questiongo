@@ -3,24 +3,12 @@ import { criarCheckoutSession } from '@/lib/stripe';
 import { verifyAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { pagamentoStripeSchema, validateBody } from '@/lib/validations';
 import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-
-// Inicializar Firebase Admin se ainda não foi inicializado
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
-
-const adminDb = getFirestore();
+import { getAdminDb } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
+    const adminDb = getAdminDb();
+
     // Rate limiting
     const clientIP = getClientIP(request);
     const rateLimit = checkRateLimit({
