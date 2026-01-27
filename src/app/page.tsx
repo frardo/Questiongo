@@ -74,21 +74,14 @@ export default function LandingPage() {
   };
 
   const handleGoogleLogin = async () => {
-    console.log("[DEBUG] handleGoogleLogin chamado, loading:", loading);
-    if (loading) {
-      console.log("[DEBUG] Bloqueado - já está carregando");
-      return;
-    }
+    if (loading) return;
     setLoading(true);
     setError("");
     try {
-      console.log("[DEBUG] Chamando loginWithGoogle...");
       await loginWithGoogle();
-      console.log("[DEBUG] Login bem-sucedido, redirecionando...");
       router.push("/home");
     } catch (error: unknown) {
       const firebaseError = error as { code?: string; message?: string };
-      console.error("[DEBUG] Erro ao fazer login com Google:", error);
 
       // Ignorar erros de cancelamento pelo usuário
       if (firebaseError.code === "auth/cancelled-popup-request" ||
