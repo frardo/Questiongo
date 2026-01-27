@@ -1,23 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyAuth, unauthorizedResponse, forbiddenResponse, isResourceOwner } from '@/lib/auth';
-
-// Inicializar Firebase Admin
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
-
-const adminDb = getFirestore();
 
 export async function POST(request: NextRequest) {
   try {
+    const adminDb = getAdminDb();
+
     // Verificar autenticação
     const authUser = await verifyAuth(request);
     if (!authUser) {
