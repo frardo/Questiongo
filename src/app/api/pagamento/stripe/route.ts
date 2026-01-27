@@ -1,16 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { criarCheckoutSession } from '@/lib/stripe';
+import { verifyAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
+import { pagamentoStripeSchema, validateBody } from '@/lib/validations';
+import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+
+// Inicializar Firebase Admin se ainda não foi inicializado
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
+
+const adminDb = getFirestore();
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { perguntaId, respostaId, valor, usuarioNome, usuarioEmail, respondedorId } = body;
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit({
+      ...RateLimitPresets.payment,
+      identifier: clientIP,
+      endpoint: 'pagamento-stripe',
+    });
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit.resetTime);
+    }
 
-    if (!perguntaId || !respostaId || !valor || !respondedorId) {
-      return NextResponse.json(
-        { error: 'Dados incompletos' },
-        { status: 400 }
-      );
+    // Verificar autenticação
+    const authUser = await verifyAuth(request);
+    if (!authUser) {
+      return unauthorizedResponse('Token de autenticação inválido');
+    }
+
+    const body = await request.json();
+
+    // Validar dados de entrada com Zod
+    const validation = validateBody(pagamentoStripeSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
+    const { perguntaId, respostaId, valor, usuarioNome, usuarioEmail, respondedorId } = validation.data;
+
+    // Verificar se o usuário é o dono da pergunta (prevenção de IDOR)
+    const perguntaDoc = await adminDb.collection('perguntas').doc(perguntaId).get();
+    if (!perguntaDoc.exists) {
+      return NextResponse.json({ error: 'Pergunta não encontrada' }, { status: 404 });
+    }
+
+    const pergunta = perguntaDoc.data();
+    if (pergunta?.usuarioId !== authUser.uid) {
+      return forbiddenResponse('Você só pode pagar por respostas às suas próprias perguntas');
     }
 
     // Criar sessão de checkout no Stripe

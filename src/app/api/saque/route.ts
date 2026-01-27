@@ -4,9 +4,22 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, addDoc, collection, Timestamp } from 'firebase/firestore';
 import { verifyAuth, unauthorizedResponse, forbiddenResponse, isResourceOwner } from '@/lib/auth';
 import { saqueSchema, validateBody } from '@/lib/validations';
+import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting (mais restritivo para saques)
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit({
+      limit: 5, // Máximo 5 saques por minuto
+      windowMs: 60000,
+      identifier: clientIP,
+      endpoint: 'saque',
+    });
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit.resetTime);
+    }
+
     // Verificar autenticação
     const authUser = await verifyAuth(request);
     if (!authUser) {

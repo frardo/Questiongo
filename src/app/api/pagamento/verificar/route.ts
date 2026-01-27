@@ -4,6 +4,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { enviarEmailPagamentoRecebido, enviarEmailPagamentoConfirmado } from '@/lib/email';
 import { verifyAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
 import { verificarPagamentoSchema, validateBody } from '@/lib/validations';
+import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
 
 // Inicializar Firebase Admin
 if (!getApps().length) {
@@ -40,6 +41,17 @@ async function verificarPagamentoAbacatePay(billingId: string) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit({
+      ...RateLimitPresets.payment,
+      identifier: clientIP,
+      endpoint: 'pagamento-verificar',
+    });
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit.resetTime);
+    }
+
     // Verificar autenticação
     const authUser = await verifyAuth(request);
     if (!authUser) {

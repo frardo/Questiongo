@@ -1,16 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
+import { verifyAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/auth';
+import { checkoutAssinaturaSchema, validateBody } from '@/lib/validations';
+import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { usuarioId, usuarioEmail, usuarioNome, planoId } = body;
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit({
+      ...RateLimitPresets.payment,
+      identifier: clientIP,
+      endpoint: 'assinatura-create-subscription',
+    });
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit.resetTime);
+    }
 
-    if (!usuarioId || !usuarioEmail) {
-      return NextResponse.json(
-        { error: 'Dados do usuário são obrigatórios' },
-        { status: 400 }
-      );
+    // Verificar autenticação
+    const authUser = await verifyAuth(request);
+    if (!authUser) {
+      return unauthorizedResponse('Token de autenticação inválido');
+    }
+
+    const body = await request.json();
+
+    // Validar dados de entrada com Zod
+    const validation = validateBody(checkoutAssinaturaSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
+    const { usuarioId, usuarioEmail, usuarioNome, planoId } = validation.data;
+
+    // Verificar se o usuário está criando assinatura para si mesmo
+    if (authUser.uid !== usuarioId) {
+      return forbiddenResponse('Você só pode criar assinaturas para sua própria conta');
     }
 
     // Mapeamento de planos para price IDs da Stripe

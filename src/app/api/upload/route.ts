@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { verifyAuth, unauthorizedResponse } from '@/lib/auth';
+import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
 
 // Configurar Cloudinary
 cloudinary.config({
@@ -23,6 +24,17 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting para uploads
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit({
+      ...RateLimitPresets.upload,
+      identifier: clientIP,
+      endpoint: 'upload',
+    });
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit.resetTime);
+    }
+
     // Verificar autenticação
     const authUser = await verifyAuth(request);
     if (!authUser) {

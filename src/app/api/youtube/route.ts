@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting para API pública
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit({
+      ...RateLimitPresets.public,
+      identifier: clientIP,
+      endpoint: 'youtube',
+    });
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit.resetTime);
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q');
 
@@ -62,7 +74,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Erro ao buscar vídeos:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erro ao buscar vídeos' },
+      { error: 'Erro ao buscar vídeos. Tente novamente.' },
       { status: 500 }
     );
   }

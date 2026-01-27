@@ -1,9 +1,17 @@
 import type { NextConfig } from "next";
 
+// Origens permitidas para CORS
+const allowedOrigins = [
+  process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  'https://questiongo.com.br',
+  'https://www.questiongo.com.br',
+].filter(Boolean);
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Headers de segurança para todas as rotas
         source: '/:path*',
         headers: [
           {
@@ -33,6 +41,32 @@ const nextConfig: NextConfig = {
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block'
+          },
+        ],
+      },
+      {
+        // CORS para rotas de API
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: allowedOrigins[0], // Origem principal
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+          {
+            key: 'Access-Control-Max-Age',
+            value: '86400', // 24 horas
           },
         ],
       },

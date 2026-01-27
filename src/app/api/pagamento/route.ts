@@ -5,6 +5,7 @@ import { verifyAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/auth'
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { criarPagamentoSchema, validateBody } from '@/lib/validations';
+import { checkRateLimit, rateLimitResponse, getClientIP, RateLimitPresets } from '@/lib/rate-limit';
 
 // Inicializar Firebase Admin se ainda não foi inicializado
 if (!getApps().length) {
@@ -21,6 +22,17 @@ const adminDb = getFirestore();
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit({
+      ...RateLimitPresets.payment,
+      identifier: clientIP,
+      endpoint: 'pagamento',
+    });
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit.resetTime);
+    }
+
     // Verificar autenticação
     const authUser = await verifyAuth(request);
     if (!authUser) {
