@@ -1,7 +1,7 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, doc, updateDoc, deleteDoc, getDoc, where, setDoc, limit } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, Auth } from "firebase/auth";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, doc, updateDoc, deleteDoc, getDoc, where, setDoc, limit, Firestore } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,31 +13,78 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-export const appleProvider = new OAuthProvider('apple.com');
+// Lazy loading - só inicializa quando realmente necessário (no cliente)
+let _app: FirebaseApp | null = null;
+let _auth: Auth | null = null;
+let _db: Firestore | null = null;
+let _storage: FirebaseStorage | null = null;
+let _googleProvider: GoogleAuthProvider | null = null;
+let _appleProvider: OAuthProvider | null = null;
+
+function getApp(): FirebaseApp {
+  if (!_app) {
+    if (getApps().length > 0) {
+      _app = getApps()[0];
+    } else {
+      _app = initializeApp(firebaseConfig);
+    }
+  }
+  return _app;
+}
+
+// Exportações com lazy loading usando getters
+export const auth: Auth = new Proxy({} as Auth, {
+  get(_, prop) {
+    if (!_auth) _auth = getAuth(getApp());
+    return (_auth as any)[prop];
+  }
+});
+
+export const db: Firestore = new Proxy({} as Firestore, {
+  get(_, prop) {
+    if (!_db) _db = getFirestore(getApp());
+    return (_db as any)[prop];
+  }
+});
+
+export const storage: FirebaseStorage = new Proxy({} as FirebaseStorage, {
+  get(_, prop) {
+    if (!_storage) _storage = getStorage(getApp());
+    return (_storage as any)[prop];
+  }
+});
+
+export const googleProvider: GoogleAuthProvider = new Proxy({} as GoogleAuthProvider, {
+  get(_, prop) {
+    if (!_googleProvider) _googleProvider = new GoogleAuthProvider();
+    return (_googleProvider as any)[prop];
+  }
+});
+
+export const appleProvider: OAuthProvider = new Proxy({} as OAuthProvider, {
+  get(_, prop) {
+    if (!_appleProvider) _appleProvider = new OAuthProvider('apple.com');
+    return (_appleProvider as any)[prop];
+  }
+});
 
 export const loginWithEmail = (email: string, password: string) => {
-  return signInWithEmailAndPassword(auth, email, password);
+  if (!_auth) _auth = getAuth(getApp());
+  return signInWithEmailAndPassword(_auth, email, password);
 };
 
 export const registerWithEmail = (email: string, password: string) => {
-  return createUserWithEmailAndPassword(auth, email, password);
+  if (!_auth) _auth = getAuth(getApp());
+  return createUserWithEmailAndPassword(_auth, email, password);
 };
 
 // Atualizar foto de perfil do usuário
 export const atualizarFotoPerfil = async (photoURL: string) => {
-  const user = auth.currentUser;
+  if (!_auth) _auth = getAuth(getApp());
+  const user = _auth.currentUser;
   if (!user) throw new Error('Usuário não autenticado');
   await updateProfile(user, { photoURL });
 };
-
-// Firestore
-export const db = getFirestore(app);
-
-// Storage
-export const storage = getStorage(app);
 
 // Função para upload de arquivos via Cloudinary
 export const uploadArquivo = async (arquivo: File, pasta: string = 'perguntas'): Promise<string> => {
