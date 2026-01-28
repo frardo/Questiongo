@@ -40,12 +40,19 @@ export const auth: Auth = new Proxy({} as Auth, {
   }
 });
 
-export const db: Firestore = new Proxy({} as Firestore, {
-  get(_, prop) {
-    if (!_db) _db = getFirestore(getApp());
-    return (_db as any)[prop];
+// Função que retorna instância real do Firestore (não Proxy)
+// Firebase SDK não reconhece Proxies como instâncias válidas
+export function getDb(): Firestore {
+  if (!_db) _db = getFirestore(getApp());
+  return _db;
+}
+
+// Alias para compatibilidade (deprecated - usar getDb() em funções)
+export const db = {
+  get instance() {
+    return getDb();
   }
-});
+};
 
 export const storage: FirebaseStorage = new Proxy({} as FirebaseStorage, {
   get(_, prop) {
@@ -173,7 +180,7 @@ export interface Pergunta {
 
 // Funções de Perguntas
 export const criarPergunta = async (pergunta: Omit<Pergunta, 'id' | 'criadoEm'>) => {
-  const docRef = await addDoc(collection(db, 'perguntas'), {
+  const docRef = await addDoc(collection(getDb(), 'perguntas'), {
     ...pergunta,
     criadoEm: Timestamp.now(),
   });
@@ -193,7 +200,7 @@ export const criarPergunta = async (pergunta: Omit<Pergunta, 'id' | 'criadoEm'>)
 };
 
 export const buscarPerguntas = async (): Promise<Pergunta[]> => {
-  const q = query(collection(db, 'perguntas'), orderBy('criadoEm', 'desc'));
+  const q = query(collection(getDb(), 'perguntas'), orderBy('criadoEm', 'desc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({
     id: doc.id,
@@ -202,17 +209,17 @@ export const buscarPerguntas = async (): Promise<Pergunta[]> => {
 };
 
 export const atualizarPergunta = async (id: string, dados: Partial<Pergunta>) => {
-  const docRef = doc(db, 'perguntas', id);
+  const docRef = doc(getDb(), 'perguntas', id);
   await updateDoc(docRef, dados);
 };
 
 export const deletarPergunta = async (id: string) => {
-  const docRef = doc(db, 'perguntas', id);
+  const docRef = doc(getDb(), 'perguntas', id);
   await deleteDoc(docRef);
 };
 
 export const buscarPerguntaPorId = async (id: string): Promise<Pergunta | null> => {
-  const docRef = doc(db, 'perguntas', id);
+  const docRef = doc(getDb(), 'perguntas', id);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() } as Pergunta;
@@ -224,7 +231,7 @@ export const buscarPerguntasPorMateria = async (materia: string, excluirId?: str
   try {
     // Query simples sem índice composto
     const q = query(
-      collection(db, 'perguntas'),
+      collection(getDb(), 'perguntas'),
       where('materia', '==', materia),
       limit(20) // Buscar mais para filtrar depois
     );
@@ -258,7 +265,7 @@ export const buscarPerguntasPorMateria = async (materia: string, excluirId?: str
 export const buscarPerguntasPorUsuario = async (usuarioId: string): Promise<Pergunta[]> => {
   try {
     const q = query(
-      collection(db, 'perguntas'),
+      collection(getDb(), 'perguntas'),
       where('usuarioId', '==', usuarioId),
       orderBy('criadoEm', 'desc')
     );
@@ -271,7 +278,7 @@ export const buscarPerguntasPorUsuario = async (usuarioId: string): Promise<Perg
     console.error("Erro na consulta com índice, tentando sem ordenação:", error);
     // Fallback: buscar sem ordenação se o índice não existir
     const q = query(
-      collection(db, 'perguntas'),
+      collection(getDb(), 'perguntas'),
       where('usuarioId', '==', usuarioId)
     );
     const querySnapshot = await getDocs(q);
@@ -304,7 +311,7 @@ export interface Resposta {
 
 // Funções de Respostas
 export const criarResposta = async (resposta: Omit<Resposta, 'id' | 'criadoEm'>) => {
-  const docRef = await addDoc(collection(db, 'respostas'), {
+  const docRef = await addDoc(collection(getDb(), 'respostas'), {
     ...resposta,
     criadoEm: Timestamp.now(),
   });
@@ -327,7 +334,7 @@ export const criarResposta = async (resposta: Omit<Resposta, 'id' | 'criadoEm'>)
 };
 
 export const buscarRespostas = async (): Promise<Resposta[]> => {
-  const q = query(collection(db, 'respostas'), orderBy('criadoEm', 'desc'));
+  const q = query(collection(getDb(), 'respostas'), orderBy('criadoEm', 'desc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({
     id: doc.id,
@@ -338,7 +345,7 @@ export const buscarRespostas = async (): Promise<Resposta[]> => {
 export const buscarRespostasPorUsuario = async (usuarioId: string): Promise<Resposta[]> => {
   try {
     const q = query(
-      collection(db, 'respostas'),
+      collection(getDb(), 'respostas'),
       where('usuarioId', '==', usuarioId),
       orderBy('criadoEm', 'desc')
     );
@@ -350,7 +357,7 @@ export const buscarRespostasPorUsuario = async (usuarioId: string): Promise<Resp
   } catch (error) {
     console.error("Erro na consulta com índice, tentando sem ordenação:", error);
     const q = query(
-      collection(db, 'respostas'),
+      collection(getDb(), 'respostas'),
       where('usuarioId', '==', usuarioId)
     );
     const querySnapshot = await getDocs(q);
@@ -381,7 +388,7 @@ export const buscarNotificacoes = async (usuarioId: string): Promise<Notificacao
   try {
     // Buscar perguntas do usuário
     const perguntasQuery = query(
-      collection(db, 'perguntas'),
+      collection(getDb(), 'perguntas'),
       where('usuarioId', '==', usuarioId)
     );
     const perguntasSnapshot = await getDocs(perguntasQuery);
@@ -393,7 +400,7 @@ export const buscarNotificacoes = async (usuarioId: string): Promise<Notificacao
       const pergunta = perguntaDoc.data() as Pergunta;
 
       const respostasQuery = query(
-        collection(db, 'respostas'),
+        collection(getDb(), 'respostas'),
         where('perguntaId', '==', perguntaDoc.id)
       );
       const respostasSnapshot = await getDocs(respostasQuery);
@@ -427,7 +434,7 @@ export const buscarNotificacoes = async (usuarioId: string): Promise<Notificacao
 
 export const buscarRespostaPorPerguntaId = async (perguntaId: string): Promise<Resposta | null> => {
   const q = query(
-    collection(db, 'respostas'),
+    collection(getDb(), 'respostas'),
     where('perguntaId', '==', perguntaId)
   );
   const querySnapshot = await getDocs(q);
@@ -439,12 +446,12 @@ export const buscarRespostaPorPerguntaId = async (perguntaId: string): Promise<R
 };
 
 export const atualizarResposta = async (id: string, dados: Partial<Resposta>) => {
-  const docRef = doc(db, 'respostas', id);
+  const docRef = doc(getDb(), 'respostas', id);
   await updateDoc(docRef, dados);
 };
 
 export const deletarResposta = async (id: string) => {
-  const docRef = doc(db, 'respostas', id);
+  const docRef = doc(getDb(), 'respostas', id);
   await deleteDoc(docRef);
 };
 
@@ -460,7 +467,7 @@ export interface PerguntaSalva {
 export const salvarPergunta = async (usuarioId: string, perguntaId: string) => {
   // Verifica se já está salva
   const q = query(
-    collection(db, 'perguntasSalvas'),
+    collection(getDb(), 'perguntasSalvas'),
     where('usuarioId', '==', usuarioId),
     where('perguntaId', '==', perguntaId)
   );
@@ -471,7 +478,7 @@ export const salvarPergunta = async (usuarioId: string, perguntaId: string) => {
     return querySnapshot.docs[0].id;
   }
 
-  const docRef = await addDoc(collection(db, 'perguntasSalvas'), {
+  const docRef = await addDoc(collection(getDb(), 'perguntasSalvas'), {
     usuarioId,
     perguntaId,
     salvoEm: Timestamp.now(),
@@ -481,14 +488,14 @@ export const salvarPergunta = async (usuarioId: string, perguntaId: string) => {
 
 export const removerPerguntaSalva = async (usuarioId: string, perguntaId: string) => {
   const q = query(
-    collection(db, 'perguntasSalvas'),
+    collection(getDb(), 'perguntasSalvas'),
     where('usuarioId', '==', usuarioId),
     where('perguntaId', '==', perguntaId)
   );
   const querySnapshot = await getDocs(q);
 
   for (const docSnap of querySnapshot.docs) {
-    await deleteDoc(doc(db, 'perguntasSalvas', docSnap.id));
+    await deleteDoc(doc(getDb(), 'perguntasSalvas', docSnap.id));
   }
 };
 
@@ -496,7 +503,7 @@ export const buscarPerguntasSalvas = async (usuarioId: string): Promise<Pergunta
   try {
     // Busca os IDs das perguntas salvas pelo usuário
     const q = query(
-      collection(db, 'perguntasSalvas'),
+      collection(getDb(), 'perguntasSalvas'),
       where('usuarioId', '==', usuarioId),
       orderBy('salvoEm', 'desc')
     );
@@ -517,7 +524,7 @@ export const buscarPerguntasSalvas = async (usuarioId: string): Promise<Pergunta
     console.error("Erro na consulta com índice, tentando sem ordenação:", error);
     // Fallback: buscar sem ordenação
     const q = query(
-      collection(db, 'perguntasSalvas'),
+      collection(getDb(), 'perguntasSalvas'),
       where('usuarioId', '==', usuarioId)
     );
     const querySnapshot = await getDocs(q);
@@ -537,7 +544,7 @@ export const buscarPerguntasSalvas = async (usuarioId: string): Promise<Pergunta
 
 export const verificarPerguntaSalva = async (usuarioId: string, perguntaId: string): Promise<boolean> => {
   const q = query(
-    collection(db, 'perguntasSalvas'),
+    collection(getDb(), 'perguntasSalvas'),
     where('usuarioId', '==', usuarioId),
     where('perguntaId', '==', perguntaId)
   );
@@ -586,7 +593,7 @@ export const incrementarAtividade = async (
   usuarioNome: string,
   usuarioFoto?: string
 ) => {
-  const docRef = doc(db, 'userStats', usuarioId);
+  const docRef = doc(getDb(), 'userStats', usuarioId);
   const docSnap = await getDoc(docRef);
 
   const diaAtual = obterDiaAtual();
@@ -668,7 +675,7 @@ export const buscarRanking = async (
   }
 
   const q = query(
-    collection(db, 'userStats'),
+    collection(getDb(), 'userStats'),
     orderBy(campoOrdenacao, 'desc'),
     limit(limite)
   );
@@ -683,7 +690,7 @@ export const buscarMinhasStats = async (usuarioId: string): Promise<{
   atividades: number;
   stats: UserStats | null;
 }> => {
-  const docRef = doc(db, 'userStats', usuarioId);
+  const docRef = doc(getDb(), 'userStats', usuarioId);
   const docSnap = await getDoc(docRef);
 
   if (!docSnap.exists()) {
@@ -694,7 +701,7 @@ export const buscarMinhasStats = async (usuarioId: string): Promise<{
 
   // Buscar posição no ranking (total)
   const q = query(
-    collection(db, 'userStats'),
+    collection(getDb(), 'userStats'),
     orderBy('atividadesTotal', 'desc')
   );
   const querySnapshot = await getDocs(q);
@@ -740,7 +747,7 @@ export interface Transacao {
 
 // Buscar saldo do usuário
 export const buscarSaldo = async (usuarioId: string): Promise<Saldo | null> => {
-  const docRef = doc(db, 'saldos', usuarioId);
+  const docRef = doc(getDb(), 'saldos', usuarioId);
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
@@ -753,7 +760,7 @@ export const buscarSaldo = async (usuarioId: string): Promise<Saldo | null> => {
 export const buscarTransacoes = async (usuarioId: string): Promise<Transacao[]> => {
   try {
     const q = query(
-      collection(db, 'transacoes'),
+      collection(getDb(), 'transacoes'),
       where('usuarioId', '==', usuarioId),
       orderBy('criadoEm', 'desc'),
       limit(50)
@@ -766,7 +773,7 @@ export const buscarTransacoes = async (usuarioId: string): Promise<Transacao[]> 
   } catch (error) {
     console.error("Erro na consulta com índice, tentando sem ordenação:", error);
     const q = query(
-      collection(db, 'transacoes'),
+      collection(getDb(), 'transacoes'),
       where('usuarioId', '==', usuarioId)
     );
     const querySnapshot = await getDocs(q);
@@ -824,12 +831,12 @@ export const salvarChavePix = async (dados: Omit<ChavePixSalva, 'id' | 'criadoEm
     const chavesAtuais = await buscarChavesPix(dados.usuarioId);
     for (const chave of chavesAtuais) {
       if (chave.principal && chave.id) {
-        await updateDoc(doc(db, 'chavesPix', chave.id), { principal: false });
+        await updateDoc(doc(getDb(), 'chavesPix', chave.id), { principal: false });
       }
     }
   }
 
-  const docRef = await addDoc(collection(db, 'chavesPix'), {
+  const docRef = await addDoc(collection(getDb(), 'chavesPix'), {
     ...dados,
     criadoEm: Timestamp.now(),
   });
@@ -840,7 +847,7 @@ export const salvarChavePix = async (dados: Omit<ChavePixSalva, 'id' | 'criadoEm
 export const buscarChavesPix = async (usuarioId: string): Promise<ChavePixSalva[]> => {
   try {
     const q = query(
-      collection(db, 'chavesPix'),
+      collection(getDb(), 'chavesPix'),
       where('usuarioId', '==', usuarioId),
       orderBy('criadoEm', 'desc')
     );
@@ -853,7 +860,7 @@ export const buscarChavesPix = async (usuarioId: string): Promise<ChavePixSalva[
     console.error("Erro ao buscar chaves PIX:", error);
     // Fallback sem ordenação
     const q = query(
-      collection(db, 'chavesPix'),
+      collection(getDb(), 'chavesPix'),
       where('usuarioId', '==', usuarioId)
     );
     const querySnapshot = await getDocs(q);
@@ -870,16 +877,16 @@ export const definirChavePrincipal = async (usuarioId: string, chaveId: string):
   const chaves = await buscarChavesPix(usuarioId);
   for (const chave of chaves) {
     if (chave.id && chave.id !== chaveId && chave.principal) {
-      await updateDoc(doc(db, 'chavesPix', chave.id), { principal: false });
+      await updateDoc(doc(getDb(), 'chavesPix', chave.id), { principal: false });
     }
   }
   // Marcar a selecionada
-  await updateDoc(doc(db, 'chavesPix', chaveId), { principal: true });
+  await updateDoc(doc(getDb(), 'chavesPix', chaveId), { principal: true });
 };
 
 // Remover chave PIX
 export const removerChavePix = async (chaveId: string): Promise<void> => {
-  await deleteDoc(doc(db, 'chavesPix', chaveId));
+  await deleteDoc(doc(getDb(), 'chavesPix', chaveId));
 };
 
 // ==================== PREFERÊNCIAS DE GATEWAY ====================
@@ -896,7 +903,7 @@ export const salvarPreferenciaGateway = async (
   usuarioId: string,
   gateway: 'stripe' | 'abacatepay'
 ): Promise<void> => {
-  const docRef = doc(db, 'preferenciasGateway', usuarioId);
+  const docRef = doc(getDb(), 'preferenciasGateway', usuarioId);
   await setDoc(docRef, {
     usuarioId,
     gateway,
@@ -908,7 +915,7 @@ export const salvarPreferenciaGateway = async (
 export const buscarPreferenciaGateway = async (
   usuarioId: string
 ): Promise<'stripe' | 'abacatepay' | null> => {
-  const docRef = doc(db, 'preferenciasGateway', usuarioId);
+  const docRef = doc(getDb(), 'preferenciasGateway', usuarioId);
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
@@ -938,7 +945,7 @@ export interface ContaBancaria {
 export const salvarContaBancaria = async (
   dados: Omit<ContaBancaria, 'atualizadoEm'>
 ): Promise<void> => {
-  const docRef = doc(db, 'contasBancarias', dados.usuarioId);
+  const docRef = doc(getDb(), 'contasBancarias', dados.usuarioId);
   await setDoc(docRef, {
     ...dados,
     atualizadoEm: Timestamp.now(),
@@ -949,7 +956,7 @@ export const salvarContaBancaria = async (
 export const buscarContaBancaria = async (
   usuarioId: string
 ): Promise<ContaBancaria | null> => {
-  const docRef = doc(db, 'contasBancarias', usuarioId);
+  const docRef = doc(getDb(), 'contasBancarias', usuarioId);
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
@@ -971,7 +978,7 @@ export interface Denuncia {
 
 // Criar denúncia
 export const criarDenuncia = async (denuncia: Omit<Denuncia, 'id' | 'criadoEm' | 'status'>) => {
-  const docRef = await addDoc(collection(db, 'denuncias'), {
+  const docRef = await addDoc(collection(getDb(), 'denuncias'), {
     ...denuncia,
     status: 'pendente',
     criadoEm: Timestamp.now(),

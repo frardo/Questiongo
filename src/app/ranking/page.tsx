@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth, buscarRanking, buscarMinhasStats, UserStats, db } from "@/lib/firebase";
+import { auth, buscarRanking, buscarMinhasStats, UserStats, getDb } from "@/lib/firebase";
 import { CrownIcon, ArrowLeft01Icon, ArrowDown01Icon, Medal01Icon, StarIcon, CheckmarkCircle02Icon, MessageQuestionIcon, Location01Icon } from "hugeicons-react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 
@@ -86,8 +86,8 @@ export default function RankingPage() {
     try {
       // Buscar todas as respostas
       let respostasQuery = materia && materia !== "Todas as matérias"
-        ? query(collection(db, 'respostas'), where('perguntaMateria', '==', materia))
-        : query(collection(db, 'respostas'));
+        ? query(collection(getDb(), 'respostas'), where('perguntaMateria', '==', materia))
+        : query(collection(getDb(), 'respostas'));
 
       const respostasSnapshot = await getDocs(respostasQuery);
 

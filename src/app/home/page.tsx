@@ -1364,8 +1364,8 @@ export default function Home() {
                   <input
                     type="number"
                     min="1"
-                    value={valorSelecionado}
-                    onChange={(e) => setValorSelecionado(Number(e.target.value) || 0)}
+                    value={valorSelecionado || ""}
+                    onChange={(e) => setValorSelecionado(e.target.value === "" ? 0 : Number(e.target.value))}
                     className="w-16 bg-transparent text-gray-700 focus:outline-none text-center"
                     style={{ fontFamily: "'Figtree Medium', sans-serif" }}
                   />
