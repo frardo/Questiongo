@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { auth, criarPergunta, buscarPerguntas, uploadArquivos, uploadArquivo, atualizarFotoPerfil, Pergunta, salvarPergunta, removerPerguntaSalva, verificarPerguntaSalva, buscarRanking, buscarMinhasStats, UserStats, buscarNotificacoes, Notificacao, buscarSaldo, Saldo, criarDenuncia } from "@/lib/firebase";
-import { MoreVerticalIcon, Calendar03Icon, CrownIcon, ArrowDown01Icon, Settings01Icon, Logout01Icon, CompassIcon, MessageQuestionIcon, PencilEdit02Icon, MoneyBag02Icon, Bookmark02Icon, Cancel01Icon, Attachment01Icon, InformationCircleIcon, Wallet02Icon, Mail01Icon, CheckmarkCircle02Icon, RankingIcon, Camera01Icon } from "hugeicons-react";
-import { Books, Calculator, Bank, Globe, Dna, PencilLine, Atom, Flask, Brain, Users, Briefcase, GraduationCap, Translate, Palette, FirstAidKit, SoccerBall, ChartLine, Scales, Desktop, PuzzlePiece, Sparkle, MusicNotes, Wrench, House, Question, NotePencil, Wallet, BookmarkSimple, GearSix } from "@phosphor-icons/react";
+import { auth, criarPergunta, buscarPerguntasComRespostas, uploadArquivos, uploadArquivo, atualizarFotoPerfil, Pergunta, buscarRanking, buscarMinhasStats, UserStats, buscarNotificacoes, Notificacao, buscarSaldo, Saldo, criarDenuncia } from "@/lib/firebase";
+import { MoreVerticalIcon, Calendar03Icon, CrownIcon, ArrowDown01Icon, Settings01Icon, Logout01Icon, CompassIcon, MessageQuestionIcon, PencilEdit02Icon, MoneyBag02Icon, Cancel01Icon, Attachment01Icon, InformationCircleIcon, Wallet02Icon, Mail01Icon, CheckmarkCircle02Icon, RankingIcon, Camera01Icon } from "hugeicons-react";
+import { Books, Calculator, Bank, Globe, Dna, PencilLine, Atom, Flask, Brain, Users, Briefcase, GraduationCap, Translate, Palette, FirstAidKit, SoccerBall, ChartLine, Scales, Desktop, PuzzlePiece, Sparkle, MusicNotes, Wrench, House, Question, NotePencil, Wallet, GearSix, SealCheck } from "@phosphor-icons/react";
 import FooterPremium from "@/components/FooterPremium";
 import toast from "react-hot-toast";
 
@@ -147,7 +147,7 @@ export default function Home() {
   useEffect(() => {
     const carregarPerguntas = async () => {
       try {
-        const dados = await buscarPerguntas();
+        const dados = await buscarPerguntasComRespostas();
         setPerguntas(dados);
       } catch (error) {
         console.error("Erro ao carregar perguntas:", error);
@@ -343,8 +343,6 @@ export default function Home() {
   ];
   const [previewEquacao, setPreviewEquacao] = useState(false);
   const [arquivosAnexados, setArquivosAnexados] = useState<File[]>([]);
-  const [perguntasSalvas, setPerguntasSalvas] = useState<Set<string>>(new Set());
-  const [salvandoPergunta, setSalvandoPergunta] = useState<string | null>(null);
 
   // Estados das notificações
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
@@ -385,49 +383,6 @@ export default function Home() {
 
   const removerArquivo = (index: number) => {
     setArquivosAnexados(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Verificar quais perguntas estão salvas
-  useEffect(() => {
-    const verificarSalvas = async () => {
-      if (!user || perguntas.length === 0) return;
-
-      const salvas = new Set<string>();
-      for (const pergunta of perguntas) {
-        if (pergunta.id) {
-          const estaSalva = await verificarPerguntaSalva(user.uid, pergunta.id);
-          if (estaSalva) {
-            salvas.add(pergunta.id);
-          }
-        }
-      }
-      setPerguntasSalvas(salvas);
-    };
-    verificarSalvas();
-  }, [user, perguntas]);
-
-  // Função para salvar/remover pergunta dos salvos
-  const handleToggleSalvar = async (perguntaId: string) => {
-    if (!user) return;
-
-    setSalvandoPergunta(perguntaId);
-    try {
-      if (perguntasSalvas.has(perguntaId)) {
-        await removerPerguntaSalva(user.uid, perguntaId);
-        setPerguntasSalvas(prev => {
-          const novo = new Set(prev);
-          novo.delete(perguntaId);
-          return novo;
-        });
-      } else {
-        await salvarPergunta(user.uid, perguntaId);
-        setPerguntasSalvas(prev => new Set(prev).add(perguntaId));
-      }
-    } catch (error) {
-      console.error("Erro ao salvar/remover pergunta:", error);
-    } finally {
-      setSalvandoPergunta(null);
-    }
   };
 
   const [enviandoPergunta, setEnviandoPergunta] = useState(false);
@@ -494,7 +449,7 @@ export default function Home() {
       await criarPergunta(dadosPergunta);
 
       // Recarregar perguntas
-      const dados = await buscarPerguntas();
+      const dados = await buscarPerguntasComRespostas();
       setPerguntas(dados);
 
       // Resetar formulário
@@ -747,10 +702,6 @@ export default function Home() {
               <Wallet size={20} weight="fill" />
               <span>Carteira</span>
             </a>
-            <a href="/salvos" className="flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full cursor-pointer transition-colors" style={{ fontFamily: "'Figtree SemiBold', sans-serif" }}>
-              <BookmarkSimple size={20} weight="fill" />
-              <span>Salvos</span>
-            </a>
           </nav>
 
           {/* Configurações no final */}
@@ -889,7 +840,22 @@ export default function Home() {
                   return true;
                 });
 
-                return perguntasFiltradas.length === 0 ? (
+                // Ordenar: abertas primeiro, depois respondidas (por data decrescente em cada grupo)
+                const perguntasOrdenadas = [...perguntasFiltradas].sort((a, b) => {
+                  // Prioridade: aberta > respondida > fechada
+                  const prioridade = { 'aberta': 0, 'respondida': 1, 'fechada': 2 };
+                  const prioA = prioridade[a.status] ?? 2;
+                  const prioB = prioridade[b.status] ?? 2;
+
+                  if (prioA !== prioB) return prioA - prioB;
+
+                  // Mesmo status: ordenar por data (mais recente primeiro)
+                  const dataA = a.criadoEm?.toDate?.() || new Date(0);
+                  const dataB = b.criadoEm?.toDate?.() || new Date(0);
+                  return dataB.getTime() - dataA.getTime();
+                });
+
+                return perguntasOrdenadas.length === 0 ? (
                   <div className="p-8 text-center text-gray-500">
                     {materiaFiltro
                       ? `Nenhuma pergunta de ${materiaFiltro} ainda.`
@@ -897,26 +863,22 @@ export default function Home() {
                     }
                   </div>
                 ) : (
-                  perguntasFiltradas.map((item, index) => (
-                    <div key={item.id} className={`py-4 relative ${index !== perguntasFiltradas.length - 1 ? 'border-b border-gray-200' : ''}`}>
+                  perguntasOrdenadas.map((item, index) => (
+                    <div key={item.id} className={`py-4 relative ${index !== perguntasOrdenadas.length - 1 ? 'border-b border-gray-200' : ''}`}>
                       <div className="px-4">
-                    {/* Pill de valor e botão salvar no canto superior direito */}
+                    {/* Pill de valor ou selo de verificado no canto superior direito */}
                     <div className="absolute top-4 right-4 flex items-center gap-2">
-                      <button
-                        onClick={() => item.id && handleToggleSalvar(item.id)}
-                        disabled={salvandoPergunta === item.id}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50 ${
-                          item.id && perguntasSalvas.has(item.id)
-                            ? 'text-blue-500 hover:text-blue-600 hover:bg-blue-50'
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                        }`}
-                        title={item.id && perguntasSalvas.has(item.id) ? 'Remover dos salvos' : 'Salvar pergunta'}
-                      >
-                        <Bookmark02Icon size={20} className={item.id && perguntasSalvas.has(item.id) ? 'fill-current' : ''} />
-                      </button>
-                      <span className="bg-gray-100 text-gray-700 text-sm font-bold px-4 py-1.5 rounded-full">
-                        R$ {item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                      </span>
+                      {/* Selo de verificado OU valor */}
+                      {item.status === 'respondida' && item.respostaVerificada ? (
+                        <span className="flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-full bg-[#00A86B]/50">
+                          <SealCheck size={18} weight="fill" className="text-[#00C853]" />
+                          <span className="text-gray-900">Verificada</span>
+                        </span>
+                      ) : item.status !== 'respondida' ? (
+                        <span className="bg-gray-100 text-gray-700 text-sm font-bold px-4 py-1.5 rounded-full">
+                          R$ {item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </span>
+                      ) : null}
                     </div>
 
                     {/* Cabeçalho: Foto + Matéria + Tempo */}
@@ -937,11 +899,19 @@ export default function Home() {
                         {/* Matéria e Tempo */}
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm font-bold text-gray-800">{item.materia}</span>
+                          {item.status === 'respondida' && (
+                            <>
+                              <span className="text-sm text-gray-400 font-bold">•</span>
+                              <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                                Respondida
+                              </span>
+                            </>
+                          )}
                           <span className="text-sm text-gray-400 font-bold">•</span>
                           <span className="text-sm font-bold text-gray-400">{formatarTempoRelativo(item.criadoEm)}</span>
                           <span className="text-sm text-gray-400 font-bold">•</span>
                           <span className="text-sm text-gray-500 flex items-center gap-1">
-                            <Calendar03Icon size={14} />
+                            <GraduationCap size={14} />
                             Entregar até {item.dataEntrega}
                           </span>
                         </div>
@@ -954,6 +924,24 @@ export default function Home() {
                         >
                           {item.pergunta}
                         </p>
+
+                        {/* Foto do respondedor (se respondida) */}
+                        {item.status === 'respondida' && item.respondedorNome && (
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-6 h-6 rounded-full bg-green-500 overflow-hidden flex-shrink-0">
+                              {item.respondedorFoto ? (
+                                <img src={item.respondedorFoto} alt={item.respondedorNome} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
+                                  {item.respondedorNome?.charAt(0) || "?"}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-sm text-gray-600">
+                              Respondida por <span className="font-semibold text-gray-800">{item.respondedorNome}</span>
+                            </span>
+                          </div>
+                        )}
 
                         {/* Indicador de anexos */}
                         {item.arquivos && item.arquivos.length > 0 && (
@@ -1619,7 +1607,7 @@ export default function Home() {
 
               {/* Data de entrega */}
               <div className="flex items-center gap-2 text-sm text-gray-500 mt-4 pt-4 border-t border-gray-100">
-                <Calendar03Icon size={16} />
+                <GraduationCap size={16} />
                 <span>Entregar até {perguntaSelecionada.dataEntrega}</span>
               </div>
             </div>

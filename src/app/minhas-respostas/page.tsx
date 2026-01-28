@@ -16,7 +16,7 @@ import {
   ViewIcon,
   PencilEdit02Icon
 } from "hugeicons-react";
-import { House, Question, NotePencil, Wallet, BookmarkSimple, GearSix } from "@phosphor-icons/react";
+import { House, Question, NotePencil, Wallet, GearSix, SealCheck } from "@phosphor-icons/react";
 import FooterPremium from "@/components/FooterPremium";
 import toast from "react-hot-toast";
 
@@ -180,10 +180,6 @@ export default function MinhasRespostas() {
             <Wallet size={20} weight="fill" />
             <span>Carteira</span>
           </a>
-          <a href="/salvos" className="flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full cursor-pointer transition-colors" style={{ fontFamily: "'Figtree SemiBold', sans-serif" }}>
-            <BookmarkSimple size={20} weight="fill" />
-            <span>Salvos</span>
-          </a>
         </nav>
 
         {/* Configurações no final */}
@@ -341,6 +337,13 @@ export default function MinhasRespostas() {
                     <div key={item.id} className={`p-4 relative ${index !== respostasFiltradas.length - 1 ? 'border-b border-gray-200' : ''}`}>
                       {/* Pill de valor e status no canto superior direito */}
                       <div className="absolute top-4 right-4 flex items-center gap-2">
+                        {/* Selo de Verificada */}
+                        {item.verificada && (
+                          <span className="flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-full bg-[#00A86B]/50">
+                            <SealCheck size={18} weight="fill" className="text-[#00C853]" />
+                            <span className="text-gray-900">Verificada</span>
+                          </span>
+                        )}
                         <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.cor}`}>
                           {statusInfo.icone}
                           {statusInfo.texto}
@@ -492,6 +495,12 @@ export default function MinhasRespostas() {
                 <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full" style={{ fontFamily: 'var(--font-semibold)' }}>
                   {respostaSelecionada.perguntaMateria}
                 </span>
+                {respostaSelecionada.verificada && (
+                  <span className="flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-full bg-[#00A86B]/50">
+                    <SealCheck size={18} weight="fill" className="text-[#00C853]" />
+                    <span className="text-gray-900">Verificada</span>
+                  </span>
+                )}
                 <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full ${getStatusInfo(respostaSelecionada.status).cor}`}>
                   {getStatusInfo(respostaSelecionada.status).icone}
                   {getStatusInfo(respostaSelecionada.status).texto}

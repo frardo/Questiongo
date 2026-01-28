@@ -16,7 +16,7 @@ import {
   Cancel01Icon,
   MessageQuestionIcon
 } from "hugeicons-react";
-import { House, Question, NotePencil, Wallet, BookmarkSimple, GearSix } from "@phosphor-icons/react";
+import { House, Question, NotePencil, Wallet, BookmarkSimple, GearSix, GraduationCap } from "@phosphor-icons/react";
 import FooterPremium from "@/components/FooterPremium";
 import toast from "react-hot-toast";
 
@@ -178,10 +178,6 @@ export default function MinhasPerguntas() {
           <a href="/carteira" className="flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full cursor-pointer transition-colors" style={{ fontFamily: "'Figtree SemiBold', sans-serif" }}>
             <Wallet size={20} weight="fill" />
             <span>Carteira</span>
-          </a>
-          <a href="/salvos" className="flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full cursor-pointer transition-colors" style={{ fontFamily: "'Figtree SemiBold', sans-serif" }}>
-            <BookmarkSimple size={20} weight="fill" />
-            <span>Salvos</span>
           </a>
         </nav>
 
@@ -366,7 +362,7 @@ export default function MinhasPerguntas() {
                         {/* Data de entrega e indicador de imagem */}
                         <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
                           <div className="flex items-center gap-2">
-                            <Calendar03Icon size={16} />
+                            <GraduationCap size={16} />
                             <span>Entregar até {item.dataEntrega}</span>
                           </div>
                           {item.arquivos && item.arquivos.length > 0 && (

@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth, buscarPerguntaPorId, buscarRespostaPorPerguntaId, atualizarResposta, atualizarPergunta, buscarPerguntasPorMateria, Pergunta, Resposta } from "@/lib/firebase";
+import { auth, buscarPerguntaPorId, buscarRespostaPorPerguntaId, atualizarResposta, atualizarPergunta, buscarPerguntasPorMateria, denunciarResposta, Pergunta, Resposta } from "@/lib/firebase";
+import RespostaVerificada from "@/components/RespostaVerificada";
 import DOMPurify from "isomorphic-dompurify";
 import toast from "react-hot-toast";
 import {
@@ -18,6 +19,7 @@ import {
   StarIcon,
   PlayIcon
 } from "hugeicons-react";
+import { SealCheck, GraduationCap } from "@phosphor-icons/react";
 
 export default function VisualizarPergunta() {
   const router = useRouter();
@@ -44,6 +46,8 @@ export default function VisualizarPergunta() {
   }>>([]);
   const [carregandoVideos, setCarregandoVideos] = useState(false);
   const [outrasPerguntas, setOutrasPerguntas] = useState<Pergunta[]>([]);
+  const [modalDenuncia, setModalDenuncia] = useState(false);
+  const [denunciando, setDenunciando] = useState(false);
 
   // Função para formatar tempo relativo
   const formatarTempoRelativo = (timestamp: { toDate: () => Date }) => {
@@ -94,6 +98,31 @@ export default function VisualizarPergunta() {
 
     carregarDados();
   }, [perguntaId]);
+
+  // Polling para atualizar verificação da resposta (se ainda não verificada)
+  useEffect(() => {
+    if (!resposta || resposta.verificada !== undefined) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const respostaAtualizada = await buscarRespostaPorPerguntaId(perguntaId);
+        if (respostaAtualizada?.verificada !== undefined) {
+          setResposta(respostaAtualizada);
+          clearInterval(interval);
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar resposta:", error);
+      }
+    }, 3000); // Verifica a cada 3 segundos
+
+    // Limpar após 30 segundos (máximo de tentativas)
+    const timeout = setTimeout(() => clearInterval(interval), 30000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [resposta, perguntaId]);
 
   // Buscar vídeos relacionados
   useEffect(() => {
@@ -259,6 +288,29 @@ export default function VisualizarPergunta() {
     }
   };
 
+  // Denunciar resposta
+  const handleDenunciarResposta = async () => {
+    if (!resposta?.id) return;
+
+    setDenunciando(true);
+    try {
+      const resultado = await denunciarResposta(resposta.id);
+
+      if (resultado.excluida) {
+        toast.success("Resposta removida por violar as regras da comunidade.");
+        setResposta(null);
+        setPergunta(prev => prev ? { ...prev, status: 'aberta' } : null);
+      } else {
+        toast.success("Denúncia registrada. Obrigado por ajudar a manter a qualidade!");
+      }
+      setModalDenuncia(false);
+    } catch {
+      toast.error("Erro ao registrar denúncia. Tente novamente.");
+    } finally {
+      setDenunciando(false);
+    }
+  };
+
   // Obter info do status da resposta
   const getStatusRespostaInfo = (status: string) => {
     switch (status) {
@@ -369,7 +421,7 @@ export default function VisualizarPergunta() {
                   {/* Footer */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Calendar03Icon size={16} />
+                      <GraduationCap size={16} />
                       <span>Entregar até {pergunta.dataEntrega}</span>
                     </div>
                     {!ehDonoDaPergunta && !resposta && (
@@ -387,178 +439,124 @@ export default function VisualizarPergunta() {
 
                 {/* Answer Box */}
                 {resposta && (
-                  <div className="bg-white rounded-2xl p-6 shadow-sm">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-bold text-gray-900">Resposta</h3>
-                      <span className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full ${getStatusRespostaInfo(resposta.status).cor}`}>
-                        {renderStatusIcon(getStatusRespostaInfo(resposta.status).iconeType)}
-                        {getStatusRespostaInfo(resposta.status).texto}
-                      </span>
-                    </div>
-
-                    {/* Respondent */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-                        {resposta.usuarioFoto ? (
-                          <img src={resposta.usuarioFoto} alt={resposta.usuarioNome} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-green-500 flex items-center justify-center text-white font-bold">
-                            {resposta.usuarioNome?.charAt(0) || "?"}
+                  <>
+                    {/* Resposta Pendente - Dono da Pergunta vê blur */}
+                    {ehDonoDaPergunta && resposta.status === 'pendente' ? (
+                      <div className={`rounded-2xl shadow-sm overflow-hidden ${resposta.verificada ? 'border-2 border-[#00A86B]' : ''}`}>
+                        {/* Selo de Verificação por especialista no topo */}
+                        {resposta.verificada && (
+                          <div className="bg-[#00A86B]/50 px-4 py-3 flex items-center gap-3">
+<SealCheck size={24} weight="fill" className="text-[#00C853]" />
+                            <span className="text-base font-bold text-gray-900">Resposta verificada por um especialista</span>
                           </div>
                         )}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800">{resposta.usuarioNome}</p>
-                        <p className="text-sm text-gray-500">{formatarTempoRelativo(resposta.criadoEm)}</p>
-                      </div>
-                    </div>
 
-                    {/* Content - Protected or Full */}
-                    {ehDonoDaPergunta && resposta.status === 'pendente' ? (
-                      <>
-                        {/* Protected - Blur com botão Desbloquear */}
-                        <div className="relative rounded-xl overflow-hidden mb-4">
-                          <div className="blur-md select-none pointer-events-none text-gray-600 p-6 bg-gray-100">
-                            <p className="mb-3">{resposta.resposta}</p>
-                            {resposta.explicacao && (
-                              <div className="mt-4 pt-4 border-t border-gray-200">
-                                <p>{resposta.explicacao.replace(/<[^>]*>/g, '').substring(0, 300)}...</p>
+                        <div className={`p-6 ${resposta.verificada ? 'bg-white' : 'bg-white'}`}>
+                          {/* Header */}
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-gray-900">Resposta</h3>
+                            <span className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full ${getStatusRespostaInfo(resposta.status).cor}`}>
+                              {renderStatusIcon(getStatusRespostaInfo(resposta.status).iconeType)}
+                              {getStatusRespostaInfo(resposta.status).texto}
+                            </span>
+                          </div>
+
+                          {/* Respondent */}
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+                              {resposta.usuarioFoto ? (
+                                <img src={resposta.usuarioFoto} alt={resposta.usuarioNome} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-green-500 flex items-center justify-center text-white font-bold">
+                                  {resposta.usuarioNome?.charAt(0) || "?"}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-800">{resposta.usuarioNome}</p>
+                              <p className="text-sm text-gray-500">{formatarTempoRelativo(resposta.criadoEm)}</p>
+                            </div>
+                          </div>
+
+                          {/* Protected - Blur com botão Desbloquear */}
+                          <div className="relative rounded-xl overflow-hidden mb-4">
+                            <div className="blur-md select-none pointer-events-none text-gray-600 p-6 bg-gray-100">
+                              <p className="mb-3">{resposta.resposta}</p>
+                              {resposta.explicacao && (
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                  <p>{resposta.explicacao.replace(/<[^>]*>/g, '').substring(0, 300)}...</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                              <button
+                                onClick={() => setModalConfirmacao('aceitar')}
+                                className="px-8 py-3 bg-white text-gray-900 rounded-full shadow-lg hover:bg-gray-100 transition-all hover:scale-105 cursor-pointer"
+                                style={{ fontFamily: 'var(--font-bold)' }}
+                              >
+                                Desbloquear
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                            <button
+                              onClick={() => setModalConfirmacao('rejeitar')}
+                              className="text-red-600 text-sm hover:text-red-700 transition-colors cursor-pointer"
+                              style={{ fontFamily: 'var(--font-medium)' }}
+                            >
+                              Rejeitar resposta
+                            </button>
+
+                            {verificandoPagamento && (
+                              <div className="flex items-center gap-2 text-sm text-blue-600">
+                                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                Verificando pagamento...
                               </div>
                             )}
-                          </div>
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                            <button
-                              onClick={() => setModalConfirmacao('aceitar')}
-                              className="px-8 py-3 bg-white text-gray-900 rounded-full shadow-lg hover:bg-gray-100 transition-all hover:scale-105 cursor-pointer"
-                              style={{ fontFamily: 'var(--font-bold)' }}
-                            >
-                              Desbloquear
-                            </button>
+
+                            {mensagemPagamento && (
+                              <p className={`text-sm ${mensagemPagamento.includes('confirmado') ? 'text-green-600' : 'text-orange-600'}`}>
+                                {mensagemPagamento}
+                              </p>
+                            )}
                           </div>
                         </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                          <button
-                            onClick={() => setModalConfirmacao('rejeitar')}
-                            className="text-red-600 text-sm hover:text-red-700 transition-colors cursor-pointer"
-                            style={{ fontFamily: 'var(--font-medium)' }}
-                          >
-                            Rejeitar resposta
-                          </button>
-
-                          {verificandoPagamento && (
-                            <div className="flex items-center gap-2 text-sm text-blue-600">
-                              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                              Verificando pagamento...
-                            </div>
-                          )}
-
-                          {mensagemPagamento && (
-                            <p className={`text-sm ${mensagemPagamento.includes('confirmado') ? 'text-green-600' : 'text-orange-600'}`}>
-                              {mensagemPagamento}
-                            </p>
-                          )}
-                        </div>
-                      </>
+                      </div>
                     ) : (
-                      <>
-                        {/* Full Content */}
-                        <div className="bg-blue-50 rounded-xl p-5 mb-4">
-                          <p className="text-gray-800" style={{ fontFamily: 'var(--font-medium)' }}>
-                            {resposta.resposta}
-                          </p>
-                        </div>
-
-                        {resposta.explicacao && (
-                          <div className="bg-gray-50 rounded-xl p-5 mb-4">
-                            <p className="text-sm text-gray-600 font-semibold mb-2">Explicação:</p>
-                            <div
-                              className="text-gray-700 prose prose-sm max-w-none"
-                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resposta.explicacao, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'blockquote', 'code', 'pre'], ALLOWED_ATTR: [] }) }}
-                            />
-                          </div>
-                        )}
-
-                        {resposta.arquivos && resposta.arquivos.length > 0 && (
-                          <div className="grid grid-cols-3 gap-3 mb-4">
-                            {resposta.arquivos.map((url, idx) => (
-                              <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
-                                <img src={url} alt={`Anexo ${idx + 1}`} className="w-full h-28 object-cover rounded-xl border border-gray-200 hover:opacity-90 transition-opacity cursor-pointer" />
-                              </a>
-                            ))}
-                          </div>
-                        )}
+                      /* Resposta Liberada - Componente com borda verde */
+                      <div className="shadow-sm">
+                        <RespostaVerificada
+                          resposta={{
+                            id: resposta.id,
+                            usuarioNome: resposta.usuarioNome,
+                            usuarioFoto: resposta.usuarioFoto,
+                            resposta: resposta.resposta,
+                            explicacao: resposta.explicacao,
+                            arquivos: resposta.arquivos,
+                            verificada: resposta.verificada,
+                            confiancaIA: resposta.confiancaIA,
+                            criadoEm: resposta.criadoEm,
+                          }}
+                          onAvaliar={(nota) => {
+                            setAvaliacao(nota);
+                            setAvaliacaoEnviada(true);
+                          }}
+                          onDenunciar={() => setModalDenuncia(true)}
+                          avaliacaoAtual={avaliacao}
+                          avaliacaoEnviada={avaliacaoEnviada}
+                        />
 
                         {resposta.status === 'aceita' && (
-                          <div className="flex items-center gap-2 pt-4 border-t border-gray-100 text-green-600 text-sm">
+                          <div className="flex items-center gap-2 mt-4 p-4 bg-white rounded-xl text-green-600 text-sm">
                             <CheckmarkCircle02Icon size={18} />
                             <span>Resposta aceita. Valor liberado para o respondedor.</span>
                           </div>
                         )}
-
-                        {/* Avaliação com Estrelas (suporta meia estrela) */}
-                        <div className="mt-6 pt-5 border-t border-gray-100">
-                          <p className="text-sm text-gray-600 mb-3 font-medium">Avalie esta resposta:</p>
-                          <div className="flex items-center">
-                            {[1, 2, 3, 4, 5].map((estrela) => (
-                              <div key={estrela} className="relative w-8 h-8">
-                                {/* Metade esquerda - 0.5 */}
-                                <button
-                                  onClick={() => {
-                                    if (!avaliacaoEnviada) {
-                                      setAvaliacao(estrela - 0.5);
-                                      setAvaliacaoEnviada(true);
-                                    }
-                                  }}
-                                  onMouseEnter={() => !avaliacaoEnviada && setHoverAvaliacao(estrela - 0.5)}
-                                  onMouseLeave={() => !avaliacaoEnviada && setHoverAvaliacao(0)}
-                                  disabled={avaliacaoEnviada}
-                                  className="absolute left-0 top-0 w-1/2 h-full z-10 cursor-pointer"
-                                />
-                                {/* Metade direita - 1.0 */}
-                                <button
-                                  onClick={() => {
-                                    if (!avaliacaoEnviada) {
-                                      setAvaliacao(estrela);
-                                      setAvaliacaoEnviada(true);
-                                    }
-                                  }}
-                                  onMouseEnter={() => !avaliacaoEnviada && setHoverAvaliacao(estrela)}
-                                  onMouseLeave={() => !avaliacaoEnviada && setHoverAvaliacao(0)}
-                                  disabled={avaliacaoEnviada}
-                                  className="absolute right-0 top-0 w-1/2 h-full z-10 cursor-pointer"
-                                />
-                                {/* Estrela visual */}
-                                <div className="relative w-8 h-8">
-                                  {/* Estrela vazia (fundo) */}
-                                  <StarIcon size={32} className="absolute text-gray-300" />
-                                  {/* Estrela preenchida (com clip) */}
-                                  <div
-                                    className="absolute overflow-hidden"
-                                    style={{
-                                      width: `${Math.min(100, Math.max(0, ((hoverAvaliacao || avaliacao) - (estrela - 1)) * 100))}%`
-                                    }}
-                                  >
-                                    <StarIcon size={32} className="text-yellow-400" style={{ fill: '#facc15' }} />
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                            {(hoverAvaliacao || avaliacao) > 0 && (
-                              <span className="ml-3 text-xl font-bold text-gray-700">
-                                {(hoverAvaliacao || avaliacao).toFixed(1)}
-                              </span>
-                            )}
-                          </div>
-                          {avaliacaoEnviada && (
-                            <p className="text-sm text-green-600 mt-2">Obrigado pela sua avaliação!</p>
-                          )}
-                        </div>
-                      </>
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
 
                 {/* No Answer */}
@@ -778,6 +776,57 @@ export default function VisualizarPergunta() {
                 style={{ fontFamily: 'var(--font-semibold)' }}
               >
                 {processando ? 'Processando...' : modalConfirmacao === 'aceitar' ? 'Pagar via PIX' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Denúncia */}
+      {modalDenuncia && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg text-gray-900" style={{ fontFamily: 'var(--font-bold)' }}>
+                Denunciar Resposta
+              </h3>
+              <button
+                onClick={() => setModalDenuncia(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              >
+                <Cancel01Icon size={24} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex items-center gap-3 p-4 bg-orange-50 rounded-xl mb-4">
+                <span className="text-2xl">⚠️</span>
+                <div>
+                  <p className="font-semibold text-orange-800">Denunciar conteúdo inadequado</p>
+                  <p className="text-sm text-orange-600">A resposta será analisada pela nossa IA.</p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm">
+                Use esta opção para reportar respostas que sejam spam, ofensivas, ou que não
+                tenham relação com a pergunta. Respostas com múltiplas denúncias serão
+                automaticamente analisadas e removidas se violarem nossas regras.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setModalDenuncia(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDenunciarResposta}
+                disabled={denunciando}
+                className="px-6 py-2.5 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-colors cursor-pointer disabled:opacity-50"
+                style={{ fontFamily: 'var(--font-semibold)' }}
+              >
+                {denunciando ? 'Enviando...' : 'Confirmar Denúncia'}
               </button>
             </div>
           </div>
