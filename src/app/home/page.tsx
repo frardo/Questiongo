@@ -474,7 +474,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <img src="/logo.svg" alt="Questiongo" className="h-11 w-auto" />
           <span className="text-2xl text-gray-900" style={{ fontFamily: "'Figtree Black', sans-serif" }}>Questiongo</span>
-          <span className="text-xs text-gray-400 ml-2">v1.0</span>
+          <span className="text-xs text-gray-400 ml-2">v2.0</span>
         </div>
 
         {/* Ações do header */}

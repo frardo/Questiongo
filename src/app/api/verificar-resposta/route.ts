@@ -3,7 +3,7 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 interface VerificacaoResult {
   verificada: boolean;
@@ -13,6 +13,9 @@ interface VerificacaoResult {
 
 export async function POST(request: NextRequest) {
   try {
+    const t0 = Date.now();
+    console.log(`[verificar-resposta] INÍCIO t=0ms`);
+
     const { pergunta, resposta, explicacao, respostaId } = await request.json();
 
     if (!pergunta || !resposta) {
@@ -22,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Verificar-resposta chamada:", { pergunta, resposta, respostaId: respostaId || "NÃO ENVIADO" });
+    console.log(`[verificar-resposta] JSON parsed t=${Date.now() - t0}ms`, { pergunta, resposta, respostaId: respostaId || "NÃO ENVIADO" });
 
     if (!GEMINI_API_KEY) {
       console.error("GEMINI_API_KEY não configurada no ambiente");
@@ -53,6 +56,7 @@ Responda APENAS com um JSON válido neste formato exato (sem markdown, sem texto
 Se não tiver certeza, seja conservador e marque como incorreta.
 `;
 
+    console.log(`[verificar-resposta] Chamando Gemini t=${Date.now() - t0}ms`);
     const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
@@ -74,6 +78,8 @@ Se não tiver certeza, seja conservador e marque como incorreta.
         },
       }),
     });
+
+    console.log(`[verificar-resposta] Gemini respondeu status=${response.status} t=${Date.now() - t0}ms`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -124,7 +130,7 @@ Se não tiver certeza, seja conservador e marque como incorreta.
       motivo: resultado.motivo || "Análise concluída",
     };
 
-    console.log("Verificação IA:", { pergunta, resposta, resultadoGemini: resultado, verificacaoResult });
+    console.log(`[verificar-resposta] Verificação IA concluída t=${Date.now() - t0}ms`, { resultadoGemini: resultado, verificacaoResult });
 
     // Salvar verificação diretamente no Firestore (não depende do cliente)
     if (respostaId) {
@@ -135,7 +141,7 @@ Se não tiver certeza, seja conservador e marque como incorreta.
           verificadaEm: FieldValue.serverTimestamp(),
           confiancaIA: verificacaoResult.confianca,
         });
-        console.log("Verificação salva no Firestore:", { respostaId, verificada: verificacaoResult.verificada });
+        console.log(`[verificar-resposta] Firestore salvo t=${Date.now() - t0}ms`, { respostaId, verificada: verificacaoResult.verificada });
       } catch (dbError) {
         console.error("Erro ao salvar verificação no Firestore:", dbError);
       }
