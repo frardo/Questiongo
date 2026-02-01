@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { loginWithGoogle, loginWithApple, loginWithEmail, registerWithEmail } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { loginWithGoogle, loginWithApple, loginWithEmail, registerWithEmail, auth } from "@/lib/firebase";
 
 const ALLOWED_DOMAINS = [
   "gmail.com",
@@ -29,6 +30,19 @@ export default function LandingPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [saldoDemo, setSaldoDemo] = useState(0);
+  const [verificandoAuth, setVerificandoAuth] = useState(true);
+
+  // Verificar se já está logado e redirecionar para /home
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push("/home");
+      } else {
+        setVerificandoAuth(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   // Animação do saldo no demo - sincronizado com o ciclo de 20s
   useEffect(() => {
@@ -242,6 +256,11 @@ export default function LandingPage() {
       ]
     }
   ];
+
+  // Enquanto verifica auth, mostra tela em branco para não piscar a landing
+  if (verificandoAuth) {
+    return <div className="min-h-screen bg-white" />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#1a1a1a]" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>
