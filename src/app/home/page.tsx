@@ -191,7 +191,7 @@ export default function Home() {
         setRankingUsuarios(dados);
 
         if (user) {
-          const stats = await buscarMinhasStats(user.uid);
+          const stats = await buscarMinhasStats(user.uid, periodo);
           setMeuRanking({
             posicao: stats.posicao,
             atividades: stats.atividades
@@ -1111,8 +1111,10 @@ export default function Home() {
                       }
                     };
 
+                    const isCurrentUser = user && usuario.usuarioId === user.uid;
+
                     return (
-                      <div key={usuario.usuarioId} className="flex items-center gap-3">
+                      <div key={usuario.usuarioId} className={`flex items-center gap-3 ${isCurrentUser ? 'bg-blue-50 rounded-full px-3 py-2 -mx-3' : ''}`}>
                         <div className="w-8 h-8 rounded-full bg-gray-300 overflow-hidden flex-shrink-0">
                           {usuario.usuarioFoto ? (
                             <img src={usuario.usuarioFoto} alt={usuario.usuarioNome} className="w-full h-full object-cover" />
@@ -1123,15 +1125,16 @@ export default function Home() {
                           )}
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-800">{usuario.usuarioNome}</p>
+                          <p className={`text-sm font-medium ${isCurrentUser ? 'text-blue-700' : 'text-gray-800'}`}>{isCurrentUser ? 'Você' : usuario.usuarioNome}</p>
                         </div>
-                        <span className="text-sm text-gray-500">{getAtividades()} atividades</span>
+                        <span className={`text-sm ${isCurrentUser ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>{getAtividades()} atividades</span>
                       </div>
                     );
                   })
                 )}
 
-                {/* Meu Ranking */}
+                {/* Meu Ranking - só mostrar se fora da lista visível */}
+                {user && meuRanking.posicao > (rankingExpandido ? 15 : 5) && (
                 <div className="flex items-center gap-3 bg-blue-50 rounded-full px-3 py-2 -mx-3">
                   <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                     {user?.photoURL ? (
@@ -1147,6 +1150,7 @@ export default function Home() {
                   </div>
                   <span className="text-sm text-blue-600 font-medium">{meuRanking.atividades} atividades</span>
                 </div>
+                )}
 
                 {/* Botão mostrar mais/menos */}
                 {!carregandoRanking && (
