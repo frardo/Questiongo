@@ -370,7 +370,6 @@ export const criarResposta = async (resposta: Omit<Resposta, 'id' | 'criadoEm'>)
   const docRef = await addDoc(collection(getDb(), 'respostas'), {
     ...resposta,
     criadoEm: Timestamp.now(),
-    verificada: false,
     denuncias: 0,
     analisadaPorIA: false,
   });
@@ -404,6 +403,33 @@ export const atualizarVerificacaoResposta = async (
     verificadaEm: Timestamp.now(),
     confiancaIA: confianca,
   });
+};
+
+export const buscarVerificacaoPorPerguntaIds = async (perguntaIds: string[]): Promise<Map<string, boolean>> => {
+  const resultado = new Map<string, boolean>();
+  if (perguntaIds.length === 0) return resultado;
+
+  // Firestore 'in' query suporta até 30 valores por vez
+  const chunks = [];
+  for (let i = 0; i < perguntaIds.length; i += 30) {
+    chunks.push(perguntaIds.slice(i, i + 30));
+  }
+
+  for (const chunk of chunks) {
+    const q = query(
+      collection(getDb(), 'respostas'),
+      where('perguntaId', 'in', chunk)
+    );
+    const snapshot = await getDocs(q);
+    snapshot.docs.forEach(doc => {
+      const data = doc.data() as Resposta;
+      if (data.verificada !== undefined) {
+        resultado.set(data.perguntaId, data.verificada === true);
+      }
+    });
+  }
+
+  return resultado;
 };
 
 export const buscarRespostas = async (): Promise<Resposta[]> => {

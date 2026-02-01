@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { StarIcon, InformationCircleIcon, AlertDiamondIcon } from "hugeicons-react";
-import { SealCheck } from "@phosphor-icons/react";
+import { SealCheck, SealWarning } from "@phosphor-icons/react";
 import DOMPurify from "isomorphic-dompurify";
 
 interface RespostaVerificadaProps {
@@ -67,12 +67,15 @@ export default function RespostaVerificada({
   };
 
   const isVerificada = resposta.verificada === true;
+  const isReprovada = resposta.verificada === false && resposta.verificada !== undefined;
 
   return (
     <div
       className={`rounded-xl overflow-hidden ${
         isVerificada
           ? "border-2 border-[#00A86B]"
+          : isReprovada
+          ? "border-2 border-red-400"
           : "border border-gray-200 bg-white"
       }`}
     >
@@ -80,9 +83,25 @@ export default function RespostaVerificada({
       {isVerificada && (
         <div className="bg-[#00A86B]/50 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Selo verde com V preto */}
-<SealCheck size={24} weight="fill" className="text-[#00C853]" />
+            <SealCheck size={24} weight="fill" className="text-[#00C853]" />
             <span className="text-base font-bold text-gray-900">Resposta verificada por um especialista</span>
+            <button
+              onClick={() => setMostrarInfoIA(!mostrarInfoIA)}
+              className="p-1 hover:bg-black/10 rounded-full transition-colors cursor-pointer"
+              title="Mais informações"
+            >
+              <InformationCircleIcon size={16} className="text-gray-700" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header - Selo de Resposta Incorreta */}
+      {isReprovada && (
+        <div className="bg-red-100 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <SealWarning size={24} weight="fill" className="text-red-500" />
+            <span className="text-base font-bold text-gray-900">O especialista achou a resposta incorreta</span>
             <button
               onClick={() => setMostrarInfoIA(!mostrarInfoIA)}
               className="p-1 hover:bg-black/10 rounded-full transition-colors cursor-pointer"
@@ -103,6 +122,19 @@ export default function RespostaVerificada({
               <span className="font-semibold"> com {resposta.confiancaIA}% de confiança</span>
             )}.
             A verificação automática ajuda a garantir a qualidade das respostas.
+          </p>
+        </div>
+      )}
+
+      {/* Info sobre verificação IA - reprovada */}
+      {mostrarInfoIA && isReprovada && (
+        <div className="bg-red-50 px-4 py-3 border-b border-red-200">
+          <p className="text-sm text-red-700">
+            Esta resposta foi analisada por Inteligência Artificial e considerada possivelmente incorreta
+            {resposta.confiancaIA && (
+              <span className="font-semibold"> com {resposta.confiancaIA}% de confiança</span>
+            )}.
+            Recomendamos cautela ao utilizar esta resposta.
           </p>
         </div>
       )}

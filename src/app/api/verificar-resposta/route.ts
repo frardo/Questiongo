@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
@@ -11,7 +13,7 @@ interface VerificacaoResult {
 
 export async function POST(request: NextRequest) {
   try {
-    const { pergunta, resposta, explicacao } = await request.json();
+    const { pergunta, resposta, explicacao, respostaId } = await request.json();
 
     if (!pergunta || !resposta) {
       return NextResponse.json(
@@ -20,11 +22,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("Verificar-resposta chamada:", { pergunta, resposta, respostaId: respostaId || "NÃO ENVIADO" });
+
     if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY não configurada");
-      // Em caso de erro de configuração, retorna não verificada sem falhar
+      console.error("GEMINI_API_KEY não configurada no ambiente");
       return NextResponse.json({
-        verificada: false,
+        verificada: undefined,
         confianca: 0,
         motivo: "Serviço de verificação indisponível",
       });
@@ -73,9 +76,10 @@ Se não tiver certeza, seja conservador e marque como incorreta.
     });
 
     if (!response.ok) {
-      console.error("Erro na API Gemini:", response.status, await response.text());
+      const errorText = await response.text();
+      console.error("Erro na API Gemini:", response.status, errorText);
       return NextResponse.json({
-        verificada: false,
+        verificada: undefined,
         confianca: 0,
         motivo: "Erro ao verificar resposta",
       });
@@ -87,9 +91,9 @@ Se não tiver certeza, seja conservador e marque como incorreta.
     const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!textContent) {
-      console.error("Resposta vazia da API Gemini");
+      console.error("Resposta vazia da API Gemini:", JSON.stringify(data));
       return NextResponse.json({
-        verificada: false,
+        verificada: undefined,
         confianca: 0,
         motivo: "Não foi possível analisar a resposta",
       });
@@ -106,9 +110,9 @@ Se não tiver certeza, seja conservador e marque como incorreta.
       }
       resultado = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
-      console.error("Erro ao parsear resposta do Gemini:", parseError, textContent);
+      console.error("Erro ao parsear resposta do Gemini:", parseError, "Texto:", textContent);
       return NextResponse.json({
-        verificada: false,
+        verificada: undefined,
         confianca: 0,
         motivo: "Erro ao processar análise",
       });
@@ -119,6 +123,25 @@ Se não tiver certeza, seja conservador e marque como incorreta.
       confianca: Math.min(100, Math.max(0, resultado.confianca || 0)),
       motivo: resultado.motivo || "Análise concluída",
     };
+
+    console.log("Verificação IA:", { pergunta, resposta, resultadoGemini: resultado, verificacaoResult });
+
+    // Salvar verificação diretamente no Firestore (não depende do cliente)
+    if (respostaId) {
+      try {
+        const db = getAdminDb();
+        await db.collection('respostas').doc(respostaId).update({
+          verificada: verificacaoResult.verificada,
+          verificadaEm: FieldValue.serverTimestamp(),
+          confiancaIA: verificacaoResult.confianca,
+        });
+        console.log("Verificação salva no Firestore:", { respostaId, verificada: verificacaoResult.verificada });
+      } catch (dbError) {
+        console.error("Erro ao salvar verificação no Firestore:", dbError);
+      }
+    } else {
+      console.warn("respostaId não foi enviado — verificação NÃO salva no Firestore");
+    }
 
     return NextResponse.json(verificacaoResult);
   } catch (error) {

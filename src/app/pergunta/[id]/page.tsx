@@ -19,7 +19,7 @@ import {
   StarIcon,
   PlayIcon
 } from "hugeicons-react";
-import { SealCheck, GraduationCap } from "@phosphor-icons/react";
+import { SealCheck, SealWarning, GraduationCap } from "@phosphor-icons/react";
 
 export default function VisualizarPergunta() {
   const router = useRouter();
@@ -442,12 +442,18 @@ export default function VisualizarPergunta() {
                   <>
                     {/* Resposta Pendente - Dono da Pergunta vê blur */}
                     {ehDonoDaPergunta && resposta.status === 'pendente' ? (
-                      <div className={`rounded-2xl shadow-sm overflow-hidden ${resposta.verificada ? 'border-2 border-[#00A86B]' : ''}`}>
+                      <div className={`rounded-2xl shadow-sm overflow-hidden ${resposta.verificada === true ? 'border-2 border-[#00A86B]' : resposta.verificada === false ? 'border-2 border-red-400' : ''}`}>
                         {/* Selo de Verificação por especialista no topo */}
-                        {resposta.verificada && (
+                        {resposta.verificada === true && (
                           <div className="bg-[#00A86B]/50 px-4 py-3 flex items-center gap-3">
-<SealCheck size={24} weight="fill" className="text-[#00C853]" />
+                            <SealCheck size={24} weight="fill" className="text-[#00C853]" />
                             <span className="text-base font-bold text-gray-900">Resposta verificada por um especialista</span>
+                          </div>
+                        )}
+                        {resposta.verificada === false && (
+                          <div className="bg-red-100 px-4 py-3 flex items-center gap-3">
+                            <SealWarning size={24} weight="fill" className="text-red-500" />
+                            <span className="text-base font-bold text-gray-900">O especialista achou a resposta incorreta</span>
                           </div>
                         )}
 

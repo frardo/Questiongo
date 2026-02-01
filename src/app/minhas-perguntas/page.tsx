@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { auth, buscarPerguntasPorUsuario, deletarPergunta, Pergunta } from "@/lib/firebase";
+import { auth, buscarPerguntasPorUsuario, buscarVerificacaoPorPerguntaIds, deletarPergunta, Pergunta } from "@/lib/firebase";
 import {
   MoreVerticalIcon,
   Calendar03Icon,
@@ -16,7 +16,7 @@ import {
   Cancel01Icon,
   MessageQuestionIcon
 } from "hugeicons-react";
-import { House, Question, NotePencil, Wallet, BookmarkSimple, GearSix, GraduationCap } from "@phosphor-icons/react";
+import { House, Question, NotePencil, Wallet, BookmarkSimple, GearSix, GraduationCap, SealCheck, SealWarning } from "@phosphor-icons/react";
 import FooterPremium from "@/components/FooterPremium";
 import toast from "react-hot-toast";
 
@@ -97,6 +97,16 @@ export default function MinhasPerguntas() {
       if (!user) return;
       try {
         const dados = await buscarPerguntasPorUsuario(user.uid);
+        // Enriquecer perguntas respondidas com dados de verificação
+        const respondidas = dados.filter(p => p.status === 'respondida' && p.id);
+        if (respondidas.length > 0) {
+          const verificacaoMap = await buscarVerificacaoPorPerguntaIds(respondidas.map(p => p.id!));
+          dados.forEach(p => {
+            if (p.id && verificacaoMap.has(p.id)) {
+              p.respostaVerificada = verificacaoMap.get(p.id);
+            }
+          });
+        }
         setPerguntas(dados);
       } catch (error) {
         console.error("Erro ao carregar perguntas:", error);
@@ -340,6 +350,18 @@ export default function MinhasPerguntas() {
                           {statusInfo.icone}
                           {statusInfo.texto}
                         </span>
+                        {item.respostaVerificada === true && (
+                          <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-[#00A86B]/50">
+                            <SealCheck size={16} weight="fill" className="text-[#00C853]" />
+                            <span className="text-gray-900">Verificada</span>
+                          </span>
+                        )}
+                        {item.respostaVerificada === false && (
+                          <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-red-100">
+                            <SealWarning size={16} weight="fill" className="text-red-500" />
+                            <span className="text-red-700">Possivelmente incorreta</span>
+                          </span>
+                        )}
                         <span className="bg-gray-100 text-gray-700 text-sm font-bold px-4 py-1.5 rounded-full">
                           R$ {item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </span>

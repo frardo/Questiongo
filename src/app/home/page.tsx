@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth, criarPergunta, buscarPerguntasComRespostas, uploadArquivos, uploadArquivo, atualizarFotoPerfil, Pergunta, buscarRanking, buscarMinhasStats, UserStats, buscarNotificacoes, Notificacao, buscarSaldo, Saldo, criarDenuncia } from "@/lib/firebase";
 import { MoreVerticalIcon, Calendar03Icon, CrownIcon, ArrowDown01Icon, Settings01Icon, Logout01Icon, CompassIcon, MessageQuestionIcon, PencilEdit02Icon, MoneyBag02Icon, Cancel01Icon, Attachment01Icon, InformationCircleIcon, Wallet02Icon, Mail01Icon, CheckmarkCircle02Icon, RankingIcon, Camera01Icon } from "hugeicons-react";
-import { Books, Calculator, Bank, Globe, Dna, PencilLine, Atom, Flask, Brain, Users, Briefcase, GraduationCap, Translate, Palette, FirstAidKit, SoccerBall, ChartLine, Scales, Desktop, PuzzlePiece, Sparkle, MusicNotes, Wrench, House, Question, NotePencil, Wallet, GearSix, SealCheck } from "@phosphor-icons/react";
+import { Books, Calculator, Bank, Globe, Dna, PencilLine, Atom, Flask, Brain, Users, Briefcase, GraduationCap, Translate, Palette, FirstAidKit, SoccerBall, ChartLine, Scales, Desktop, PuzzlePiece, Sparkle, MusicNotes, Wrench, House, Question, NotePencil, Wallet, GearSix, SealCheck, SealWarning } from "@phosphor-icons/react";
 import FooterPremium from "@/components/FooterPremium";
 import toast from "react-hot-toast";
 
@@ -869,10 +869,15 @@ export default function Home() {
                     {/* Pill de valor ou selo de verificado no canto superior direito */}
                     <div className="absolute top-4 right-4 flex items-center gap-2">
                       {/* Selo de verificado OU valor */}
-                      {item.status === 'respondida' && item.respostaVerificada ? (
+                      {item.status === 'respondida' && item.respostaVerificada === true ? (
                         <span className="flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-full bg-[#00A86B]/50">
                           <SealCheck size={18} weight="fill" className="text-[#00C853]" />
                           <span className="text-gray-900">Verificada</span>
+                        </span>
+                      ) : item.status === 'respondida' && item.respostaVerificada === false ? (
+                        <span className="flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-full bg-red-100">
+                          <SealWarning size={18} weight="fill" className="text-red-500" />
+                          <span className="text-red-700">Possivelmente incorreta</span>
                         </span>
                       ) : item.status !== 'respondida' ? (
                         <span className="bg-gray-100 text-gray-700 text-sm font-bold px-4 py-1.5 rounded-full">
