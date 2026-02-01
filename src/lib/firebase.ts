@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, Auth, signInWithPopup, onAuthStateChanged, signOut, User } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, Auth, signInWithPopup, onAuthStateChanged, signOut, User, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, doc, updateDoc, deleteDoc, getDoc, where, setDoc, limit, Firestore } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
 
@@ -32,11 +32,27 @@ function getApp(): FirebaseApp {
   return _app;
 }
 
-// Exportações com lazy loading usando getters
+// Auth real (sem Proxy) para garantir persistência e compatibilidade com Firebase SDK
+export function getAuthInstance(): Auth {
+  if (!_auth) {
+    _auth = getAuth(getApp());
+    // Garantir persistência local (sobrevive a fechar/reabrir navegador)
+    setPersistence(_auth, browserLocalPersistence).catch((err) =>
+      console.error("Erro ao configurar persistência:", err)
+    );
+  }
+  return _auth;
+}
+
+// Proxy que delega para instância real - com bind correto para métodos
 export const auth: Auth = new Proxy({} as Auth, {
   get(_, prop) {
-    if (!_auth) _auth = getAuth(getApp());
-    return (_auth as any)[prop];
+    const realAuth = getAuthInstance();
+    const value = (realAuth as any)[prop];
+    if (typeof value === 'function') {
+      return value.bind(realAuth);
+    }
+    return value;
   }
 });
 
@@ -76,45 +92,38 @@ export const appleProvider: OAuthProvider = new Proxy({} as OAuthProvider, {
 });
 
 export const loginWithEmail = (email: string, password: string) => {
-  if (!_auth) _auth = getAuth(getApp());
-  return signInWithEmailAndPassword(_auth, email, password);
+  return signInWithEmailAndPassword(getAuthInstance(), email, password);
 };
 
 export const registerWithEmail = (email: string, password: string) => {
-  if (!_auth) _auth = getAuth(getApp());
-  return createUserWithEmailAndPassword(_auth, email, password);
+  return createUserWithEmailAndPassword(getAuthInstance(), email, password);
 };
 
 // Login com Google
 export const loginWithGoogle = () => {
-  if (!_auth) _auth = getAuth(getApp());
   if (!_googleProvider) _googleProvider = new GoogleAuthProvider();
-  return signInWithPopup(_auth, _googleProvider);
+  return signInWithPopup(getAuthInstance(), _googleProvider);
 };
 
 // Login com Apple
 export const loginWithApple = () => {
-  if (!_auth) _auth = getAuth(getApp());
   if (!_appleProvider) _appleProvider = new OAuthProvider('apple.com');
-  return signInWithPopup(_auth, _appleProvider);
+  return signInWithPopup(getAuthInstance(), _appleProvider);
 };
 
 // Logout
 export const logout = () => {
-  if (!_auth) _auth = getAuth(getApp());
-  return signOut(_auth);
+  return signOut(getAuthInstance());
 };
 
 // Observer de autenticação
 export const onAuthChange = (callback: (user: User | null) => void) => {
-  if (!_auth) _auth = getAuth(getApp());
-  return onAuthStateChanged(_auth, callback);
+  return onAuthStateChanged(getAuthInstance(), callback);
 };
 
 // Atualizar foto de perfil do usuário
 export const atualizarFotoPerfil = async (photoURL: string) => {
-  if (!_auth) _auth = getAuth(getApp());
-  const user = _auth.currentUser;
+  const user = getAuthInstance().currentUser;
   if (!user) throw new Error('Usuário não autenticado');
   await updateProfile(user, { photoURL });
 };
