@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { StarIcon, InformationCircleIcon, AlertDiamondIcon } from "hugeicons-react";
 import { SealCheck, SealWarning } from "@phosphor-icons/react";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from "dompurify";
 
 interface RespostaVerificadaProps {
   resposta: {

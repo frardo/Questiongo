@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, buscarPerguntaPorId, buscarRespostaPorPerguntaId, atualizarResposta, atualizarPergunta, buscarPerguntasPorMateria, denunciarResposta, Pergunta, Resposta } from "@/lib/firebase";
 import RespostaVerificada from "@/components/RespostaVerificada";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from "dompurify";
 import toast from "react-hot-toast";
 import {
   Calendar03Icon,
