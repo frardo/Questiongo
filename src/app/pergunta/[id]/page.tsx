@@ -12,14 +12,13 @@ import {
   CheckmarkCircle02Icon,
   Cancel01Icon,
   Clock01Icon,
-  ArrowLeft02Icon,
   PencilEdit02Icon,
   ArrowRight01Icon,
   SparklesIcon,
   StarIcon,
   PlayIcon
 } from "hugeicons-react";
-import { SealCheck, SealWarning, GraduationCap } from "@phosphor-icons/react";
+import { SealCheck, SealWarning, ArrowLeft } from "@phosphor-icons/react";
 
 export default function VisualizarPergunta() {
   const router = useRouter();
@@ -343,7 +342,7 @@ export default function VisualizarPergunta() {
             onClick={() => router.push('/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
           >
-            <ArrowLeft02Icon size={20} />
+            <ArrowLeft size={20} />
             <span style={{ fontFamily: 'var(--font-medium)' }}>Voltar</span>
           </button>
           <a href="/home">
@@ -420,10 +419,8 @@ export default function VisualizarPergunta() {
 
                   {/* Footer */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <GraduationCap size={16} />
-                      <span>Entregar até {pergunta.dataEntrega}</span>
-                    </div>
+
+
                     {!ehDonoDaPergunta && !resposta && (
                       <button
                         onClick={() => router.push(`/responder/${perguntaId}`)}

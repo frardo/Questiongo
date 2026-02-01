@@ -177,7 +177,7 @@ export interface Pergunta {
   materia: string;
   pergunta: string;
   valor: number;
-  dataEntrega: string;
+
   criadoEm: Timestamp;
   usuarioId: string;
   usuarioNome: string;

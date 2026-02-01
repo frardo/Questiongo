@@ -455,11 +455,8 @@ export default function LandingPage() {
                                 <span className="font-bold text-gray-800">Matemática</span>
                                 <span className="text-gray-400">•</span>
                                 <span className="font-bold text-gray-400">há 5 min</span>
-                                <span className="text-gray-400">•</span>
-                                <span className="text-gray-500 flex items-center gap-0.5">
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
-                                  Entregar até 25/01
-                                </span>
+
+
                               </div>
                               <p className="text-[11px] text-black mb-2">Como resolver uma equação do 2º grau usando a fórmula de Bhaskara?</p>
                               <div className="flex justify-end">
@@ -620,13 +617,8 @@ export default function LandingPage() {
                     </ul>
                   </div>
 
-                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <p className="text-[10px] text-gray-400">Entregar até: <span className="text-gray-600 font-medium">26/01/2026 às 23:59</span></p>
-                    <div className="flex items-center gap-1 text-amber-500">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z"/></svg>
-                      <span className="text-[10px] font-medium">2 dias restantes</span>
-                    </div>
-                  </div>
+
+
                 </div>
 
                 {/* Lado direito - Editor */}

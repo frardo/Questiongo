@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth, criarPergunta, buscarPerguntasComRespostas, ouvirPerguntasComRespostas, uploadArquivos, uploadArquivo, atualizarFotoPerfil, Pergunta, buscarRanking, buscarMinhasStats, UserStats, buscarNotificacoes, Notificacao, buscarSaldo, Saldo, criarDenuncia } from "@/lib/firebase";
-import { MoreVerticalIcon, Calendar03Icon, CrownIcon, ArrowDown01Icon, Settings01Icon, Logout01Icon, CompassIcon, MessageQuestionIcon, PencilEdit02Icon, MoneyBag02Icon, Cancel01Icon, Attachment01Icon, InformationCircleIcon, Wallet02Icon, Mail01Icon, CheckmarkCircle02Icon, RankingIcon, Camera01Icon } from "hugeicons-react";
+import { MoreVerticalIcon, CrownIcon, ArrowDown01Icon, Settings01Icon, Logout01Icon, CompassIcon, MessageQuestionIcon, PencilEdit02Icon, MoneyBag02Icon, Cancel01Icon, Attachment01Icon, InformationCircleIcon, Wallet02Icon, Mail01Icon, CheckmarkCircle02Icon, RankingIcon, Camera01Icon } from "hugeicons-react";
 import { Books, Calculator, Bank, Globe, Dna, PencilLine, Atom, Flask, Brain, Users, Briefcase, GraduationCap, Translate, Palette, FirstAidKit, SoccerBall, ChartLine, Scales, Desktop, PuzzlePiece, Sparkle, MusicNotes, Wrench, House, Question, NotePencil, Wallet, GearSix, SealCheck, SealWarning } from "@phosphor-icons/react";
 import FooterPremium from "@/components/FooterPremium";
 import toast from "react-hot-toast";
@@ -30,11 +30,8 @@ export default function Home() {
   const [textoPergunta, setTextoPergunta] = useState("");
   const [materiaSelecionada, setMateriaSelecionada] = useState("");
   const [valorSelecionado, setValorSelecionado] = useState(10);
-  const [dataEntregaSelecionada, setDataEntregaSelecionada] = useState(() => {
-    const hoje = new Date();
-    hoje.setDate(hoje.getDate() + 7);
-    return hoje.toISOString().split('T')[0];
-  });
+
+
   const [materiaMenuAberto, setMateriaMenuAberto] = useState(false);
   const [mostrarSimbolosModal, setMostrarSimbolosModal] = useState(false);
   const [mostrarEquacaoModal, setMostrarEquacaoModal] = useState(false);
@@ -403,16 +400,11 @@ export default function Home() {
         arquivosUrls = await uploadArquivos(arquivosAnexados, `perguntas/${user.uid}`);
       }
 
-      // Formatar data de entrega selecionada para pt-BR
-      const [ano, mes, dia] = dataEntregaSelecionada.split('-');
-      const dataEntregaStr = `${dia}/${mes}/${ano}`;
-
       // Montar objeto da pergunta (sem campos undefined)
       const dadosPergunta: {
         materia: string;
         pergunta: string;
         valor: number;
-        dataEntrega: string;
         usuarioId: string;
         usuarioNome: string;
         status: 'aberta' | 'respondida' | 'fechada';
@@ -423,7 +415,6 @@ export default function Home() {
         materia: materiaSelecionada,
         pergunta: textoPergunta,
         valor: valorSelecionado,
-        dataEntrega: dataEntregaStr,
         usuarioId: user.uid,
         usuarioNome: user.displayName || "Usuário",
         status: 'aberta',
@@ -808,19 +799,7 @@ export default function Home() {
                   Carregando perguntas...
                 </div>
               ) : (() => {
-                // Função para verificar se a pergunta expirou (passou da data de entrega e não foi respondida)
-                const perguntaExpirou = (pergunta: Pergunta) => {
-                  if (pergunta.status !== 'aberta') return false; // Se já foi respondida, não expirou
-                  const [dia, mes, ano] = pergunta.dataEntrega.split('/');
-                  const dataEntrega = new Date(Number(ano), Number(mes) - 1, Number(dia));
-                  const hoje = new Date();
-                  hoje.setHours(0, 0, 0, 0);
-                  return dataEntrega < hoje;
-                };
-
-                // Filtrar perguntas: remover expiradas e aplicar filtros
-                const perguntasValidas = perguntas.filter(p => !perguntaExpirou(p));
-                const perguntasFiltradas = perguntasValidas.filter(p => {
+                const perguntasFiltradas = perguntas.filter(p => {
                   // Filtro de matéria
                   if (materiaFiltro && p.materia !== materiaFiltro) return false;
 
@@ -909,11 +888,8 @@ export default function Home() {
                           )}
                           <span className="text-sm text-gray-400 font-bold">•</span>
                           <span className="text-sm font-bold text-gray-400">{formatarTempoRelativo(item.criadoEm)}</span>
-                          <span className="text-sm text-gray-400 font-bold">•</span>
-                          <span className="text-sm text-gray-500 flex items-center gap-1">
-                            <GraduationCap size={14} />
-                            Entregar até {item.dataEntrega}
-                          </span>
+
+
                         </div>
 
                         {/* Pergunta - abre página completa */}
@@ -1281,19 +1257,8 @@ export default function Home() {
                   onChange={handleAnexarArquivo}
                 />
 
-                {/* Input Data de Entrega */}
-                <div className="flex items-center bg-gray-100 rounded-lg px-3 py-2 gap-2 ml-auto">
-                  <Calendar03Icon size={18} className="text-gray-500" />
-                  <span className="text-gray-500 text-sm" style={{ fontFamily: "'Figtree Medium', sans-serif" }}>Entregar até</span>
-                  <input
-                    type="date"
-                    value={dataEntregaSelecionada}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setDataEntregaSelecionada(e.target.value)}
-                    className="bg-transparent text-gray-700 focus:outline-none cursor-pointer text-sm"
-                    style={{ fontFamily: "'Figtree Medium', sans-serif" }}
-                  />
-                </div>
+
+
               </div>
 
               {/* Dropdowns e info */}
@@ -1605,11 +1570,8 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Data de entrega */}
-              <div className="flex items-center gap-2 text-sm text-gray-500 mt-4 pt-4 border-t border-gray-100">
-                <GraduationCap size={16} />
-                <span>Entregar até {perguntaSelecionada.dataEntrega}</span>
-              </div>
+
+
             </div>
 
             {/* Footer */}

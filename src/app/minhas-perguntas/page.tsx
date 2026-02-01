@@ -16,7 +16,7 @@ import {
   Cancel01Icon,
   MessageQuestionIcon
 } from "hugeicons-react";
-import { House, Question, NotePencil, Wallet, BookmarkSimple, GearSix, GraduationCap, SealCheck, SealWarning } from "@phosphor-icons/react";
+import { House, Question, NotePencil, Wallet, BookmarkSimple, GearSix, SealCheck, SealWarning } from "@phosphor-icons/react";
 import FooterPremium from "@/components/FooterPremium";
 import toast from "react-hot-toast";
 
@@ -381,12 +381,8 @@ export default function MinhasPerguntas() {
                           {item.pergunta}
                         </p>
 
-                        {/* Data de entrega e indicador de imagem */}
                         <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                          <div className="flex items-center gap-2">
-                            <GraduationCap size={16} />
-                            <span>Entregar até {item.dataEntrega}</span>
-                          </div>
+
                           {item.arquivos && item.arquivos.length > 0 && (
                             <div className="flex items-center gap-1 text-blue-500">
                               <Attachment01Icon size={14} />

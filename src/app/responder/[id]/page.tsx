@@ -426,11 +426,8 @@ export default function ResponderPergunta() {
               </div>
             )}
 
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <p className="text-sm text-gray-500" style={{ fontFamily: 'var(--font-medium)' }}>
-                Entregar até: <span className="text-gray-700">{pergunta.dataEntrega}</span>
-              </p>
-            </div>
+
+
           </div>
 
           {/* Lado direito - Editor de resposta */}
