@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft01Icon, HelpCircleIcon, Attachment01Icon } from "hugeicons-react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth, buscarPerguntaPorId, Pergunta, criarResposta, uploadArquivos } from "@/lib/firebase";
+import { auth, buscarPerguntaPorId, Pergunta, criarResposta, uploadArquivos, atualizarVerificacaoResposta } from "@/lib/firebase";
 import toast from "react-hot-toast";
 
 const categoriaSimbolos: Record<string, string[]> = {
@@ -185,9 +185,32 @@ export default function ResponderPergunta() {
         dadosResposta.usuarioFoto = user.photoURL;
       }
 
-      await criarResposta(dadosResposta);
+      const respostaId = await criarResposta(dadosResposta);
 
       toast.success("Resposta enviada com sucesso!");
+
+      // Verificar resposta com IA em background (não bloqueia navegação)
+      fetch('/api/verificar-resposta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pergunta: pergunta.pergunta,
+          resposta: respostaTexto,
+          explicacao: explicacaoTexto,
+        }),
+      })
+        .then(res => res.json())
+        .then(resultado => {
+          if (resultado.verificada !== undefined) {
+            atualizarVerificacaoResposta(
+              respostaId,
+              resultado.verificada === true,
+              resultado.confianca || 0
+            ).catch(err => console.error("Erro ao salvar verificação:", err));
+          }
+        })
+        .catch(err => console.error("Erro na verificação por IA:", err));
+
       router.push("/minhas-respostas");
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";

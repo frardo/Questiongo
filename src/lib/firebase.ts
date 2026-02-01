@@ -176,6 +176,10 @@ export interface Pergunta {
   arquivos?: string[];
   status: 'aberta' | 'respondida' | 'fechada';
   nivel?: 'fundamental' | 'medio' | 'superior';
+  // Dados da resposta (preenchido quando status = 'respondida')
+  respondedorNome?: string;
+  respondedorFoto?: string;
+  respostaVerificada?: boolean;
 }
 
 // Funções de Perguntas
@@ -206,6 +210,42 @@ export const buscarPerguntas = async (): Promise<Pergunta[]> => {
     id: doc.id,
     ...doc.data()
   } as Pergunta));
+};
+
+// Buscar perguntas com dados da resposta (para o feed/mercado)
+export const buscarPerguntasComRespostas = async (): Promise<Pergunta[]> => {
+  // Buscar todas as perguntas
+  const perguntasQuery = query(collection(getDb(), 'perguntas'), orderBy('criadoEm', 'desc'));
+  const perguntasSnapshot = await getDocs(perguntasQuery);
+  const perguntas = perguntasSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as Pergunta));
+
+  // Buscar todas as respostas
+  const respostasQuery = query(collection(getDb(), 'respostas'));
+  const respostasSnapshot = await getDocs(respostasQuery);
+  const respostasMap = new Map<string, Resposta>();
+  respostasSnapshot.docs.forEach(doc => {
+    const resposta = { id: doc.id, ...doc.data() } as Resposta;
+    respostasMap.set(resposta.perguntaId, resposta);
+  });
+
+  // Enriquecer perguntas com dados da resposta
+  return perguntas.map(pergunta => {
+    if (pergunta.status === 'respondida' && pergunta.id) {
+      const resposta = respostasMap.get(pergunta.id);
+      if (resposta) {
+        return {
+          ...pergunta,
+          respondedorNome: resposta.usuarioNome,
+          respondedorFoto: resposta.usuarioFoto,
+          respostaVerificada: resposta.verificada,
+        };
+      }
+    }
+    return pergunta;
+  });
 };
 
 export const atualizarPergunta = async (id: string, dados: Partial<Pergunta>) => {
@@ -307,13 +347,23 @@ export interface Resposta {
   perguntaMateria?: string;
   perguntaTexto?: string;
   perguntaValor?: number;
+  // Campos de verificação por IA
+  verificada?: boolean;           // true se Gemini aprovou
+  verificadaEm?: Timestamp;       // quando foi verificada
+  confiancaIA?: number;           // 0-100% confiança da IA
+  denuncias?: number;             // contador de denúncias
+  analisadaPorIA?: boolean;       // se já passou por análise de spam
 }
 
 // Funções de Respostas
 export const criarResposta = async (resposta: Omit<Resposta, 'id' | 'criadoEm'>) => {
+  // Criar resposta com campos de verificação iniciais
   const docRef = await addDoc(collection(getDb(), 'respostas'), {
     ...resposta,
     criadoEm: Timestamp.now(),
+    verificada: false,
+    denuncias: 0,
+    analisadaPorIA: false,
   });
 
   // Atualizar status da pergunta para 'respondida'
@@ -331,6 +381,20 @@ export const criarResposta = async (resposta: Omit<Resposta, 'id' | 'criadoEm'>)
   }
 
   return docRef.id;
+};
+
+// Atualizar resultado da verificação por IA (chamado pelo cliente)
+export const atualizarVerificacaoResposta = async (
+  respostaId: string,
+  verificada: boolean,
+  confianca: number
+) => {
+  const docRef = doc(getDb(), 'respostas', respostaId);
+  await updateDoc(docRef, {
+    verificada,
+    verificadaEm: Timestamp.now(),
+    confiancaIA: confianca,
+  });
 };
 
 export const buscarRespostas = async (): Promise<Resposta[]> => {
@@ -453,6 +517,63 @@ export const atualizarResposta = async (id: string, dados: Partial<Resposta>) =>
 export const deletarResposta = async (id: string) => {
   const docRef = doc(getDb(), 'respostas', id);
   await deleteDoc(docRef);
+};
+
+// Denunciar resposta (incrementa contador e analisa spam se >= 3 denúncias)
+export const denunciarResposta = async (respostaId: string): Promise<{
+  excluida: boolean;
+  denuncias: number;
+  motivo?: string;
+}> => {
+  const docRef = doc(getDb(), 'respostas', respostaId);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    return { excluida: false, denuncias: 0, motivo: "Resposta não encontrada" };
+  }
+
+  const dados = docSnap.data() as Resposta;
+  const novasDenuncias = (dados.denuncias || 0) + 1;
+
+  // Atualizar contador de denúncias
+  await updateDoc(docRef, { denuncias: novasDenuncias });
+
+  // Se atingiu 3 denúncias e ainda não foi analisada por IA
+  if (novasDenuncias >= 3 && !dados.analisadaPorIA) {
+    try {
+      const response = await fetch('/api/analisar-spam', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pergunta: dados.perguntaTexto || '',
+          resposta: dados.resposta,
+        }),
+      });
+
+      if (response.ok) {
+        const resultado = await response.json();
+
+        if (resultado.spam === true) {
+          // Excluir resposta se for spam
+          await deleteDoc(docRef);
+          return {
+            excluida: true,
+            denuncias: novasDenuncias,
+            motivo: resultado.motivo || "Conteúdo identificado como spam",
+          };
+        } else {
+          // Marcar que já foi analisada (não analisar novamente)
+          await updateDoc(docRef, { analisadaPorIA: true });
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao analisar spam:", error);
+      // Em caso de erro, apenas marca como analisada para não tentar de novo
+      await updateDoc(docRef, { analisadaPorIA: true });
+    }
+  }
+
+  return { excluida: false, denuncias: novasDenuncias };
 };
 
 // Tipos de Pergunta Salva

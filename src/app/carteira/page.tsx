@@ -498,10 +498,6 @@ export default function Carteira() {
             <Wallet size={20} weight="fill" />
             <span>Carteira</span>
           </a>
-          <a href="/salvos" className="flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full cursor-pointer transition-colors" style={{ fontFamily: "'Figtree SemiBold', sans-serif" }}>
-            <BookmarkSimple size={20} weight="fill" />
-            <span>Salvos</span>
-          </a>
         </nav>
 
         {/* Configurações no final */}
