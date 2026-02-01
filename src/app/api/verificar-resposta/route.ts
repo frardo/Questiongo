@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 interface VerificacaoResult {
@@ -11,32 +13,8 @@ interface VerificacaoResult {
   motivo: string;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const t0 = Date.now();
-    console.log(`[verificar-resposta] INÍCIO t=0ms`);
-
-    const { pergunta, resposta, explicacao, respostaId } = await request.json();
-
-    if (!pergunta || !resposta) {
-      return NextResponse.json(
-        { error: "Pergunta e resposta são obrigatórios" },
-        { status: 400 }
-      );
-    }
-
-    console.log(`[verificar-resposta] JSON parsed t=${Date.now() - t0}ms`, { pergunta, resposta, respostaId: respostaId || "NÃO ENVIADO" });
-
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY não configurada no ambiente");
-      return NextResponse.json({
-        verificada: undefined,
-        confianca: 0,
-        motivo: "Serviço de verificação indisponível",
-      });
-    }
-
-    const prompt = `
+function buildPrompt(pergunta: string, resposta: string, explicacao?: string): string {
+  return `
 Você é um sistema de verificação de respostas educacionais. Analise se a resposta está correta para a pergunta.
 
 PERGUNTA: ${pergunta}
@@ -55,53 +33,101 @@ Responda APENAS com um JSON válido neste formato exato (sem markdown, sem texto
 
 Se não tiver certeza, seja conservador e marque como incorreta.
 `;
+}
 
-    console.log(`[verificar-resposta] Chamando Gemini t=${Date.now() - t0}ms`);
-    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 500,
-        },
-      }),
-    });
+async function chamarGroq(prompt: string): Promise<string> {
+  const response = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.1-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      max_tokens: 500,
+    }),
+  });
 
-    console.log(`[verificar-resposta] Gemini respondeu status=${response.status} t=${Date.now() - t0}ms`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq ${response.status}: ${errorText}`);
+  }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro na API Gemini:", response.status, errorText);
-      return NextResponse.json({
-        verificada: undefined,
-        confianca: 0,
-        motivo: "Erro ao verificar resposta",
-      });
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
+async function chamarGemini(prompt: string): Promise<string> {
+  const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const t0 = Date.now();
+    console.log(`[verificar-resposta] INÍCIO t=0ms`);
+
+    const { pergunta, resposta, explicacao, respostaId } = await request.json();
+
+    if (!pergunta || !resposta) {
+      return NextResponse.json(
+        { error: "Pergunta e resposta são obrigatórios" },
+        { status: 400 }
+      );
     }
 
-    const data = await response.json();
+    console.log(`[verificar-resposta] JSON parsed t=${Date.now() - t0}ms`, { pergunta, resposta, respostaId: respostaId || "NÃO ENVIADO" });
 
-    // Extrair o texto da resposta
-    const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const prompt = buildPrompt(pergunta, resposta, explicacao);
+
+    // Tentar Groq primeiro, fallback para Gemini
+    let textContent = "";
+    let provedor = "";
+
+    if (GROQ_API_KEY) {
+      try {
+        console.log(`[verificar-resposta] Chamando Groq t=${Date.now() - t0}ms`);
+        textContent = await chamarGroq(prompt);
+        provedor = "Groq";
+        console.log(`[verificar-resposta] Groq respondeu t=${Date.now() - t0}ms`);
+      } catch (groqError) {
+        console.error("[verificar-resposta] Groq falhou, tentando Gemini:", groqError);
+      }
+    }
+
+    if (!textContent && GEMINI_API_KEY) {
+      try {
+        console.log(`[verificar-resposta] Chamando Gemini (fallback) t=${Date.now() - t0}ms`);
+        textContent = await chamarGemini(prompt);
+        provedor = "Gemini";
+        console.log(`[verificar-resposta] Gemini respondeu t=${Date.now() - t0}ms`);
+      } catch (geminiError) {
+        console.error("[verificar-resposta] Gemini também falhou:", geminiError);
+      }
+    }
 
     if (!textContent) {
-      console.error("Resposta vazia da API Gemini:", JSON.stringify(data));
+      console.error("[verificar-resposta] Nenhum provedor de IA disponível");
       return NextResponse.json({
         verificada: undefined,
         confianca: 0,
-        motivo: "Não foi possível analisar a resposta",
+        motivo: "Serviço de verificação indisponível",
       });
     }
 
@@ -109,14 +135,13 @@ Se não tiver certeza, seja conservador e marque como incorreta.
     let resultado: { correta: boolean; confianca: number; motivo: string };
 
     try {
-      // Limpar possíveis caracteres extras
       const jsonMatch = textContent.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error("JSON não encontrado na resposta");
       }
       resultado = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
-      console.error("Erro ao parsear resposta do Gemini:", parseError, "Texto:", textContent);
+      console.error(`Erro ao parsear resposta do ${provedor}:`, parseError, "Texto:", textContent);
       return NextResponse.json({
         verificada: undefined,
         confianca: 0,
@@ -130,9 +155,9 @@ Se não tiver certeza, seja conservador e marque como incorreta.
       motivo: resultado.motivo || "Análise concluída",
     };
 
-    console.log(`[verificar-resposta] Verificação IA concluída t=${Date.now() - t0}ms`, { resultadoGemini: resultado, verificacaoResult });
+    console.log(`[verificar-resposta] Verificação IA concluída via ${provedor} t=${Date.now() - t0}ms`, { resultado, verificacaoResult });
 
-    // Salvar verificação diretamente no Firestore (não depende do cliente)
+    // Salvar verificação diretamente no Firestore
     if (respostaId) {
       try {
         const db = getAdminDb();
