@@ -189,21 +189,20 @@ export default function ResponderPergunta() {
 
       toast.success("Resposta enviada com sucesso!");
 
-      // Verificar resposta com IA (aguarda completar antes de navegar)
-      try {
-        await fetch('/api/verificar-resposta', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pergunta: pergunta.pergunta,
-            resposta: respostaTexto,
-            explicacao: explicacaoTexto,
-            respostaId,
-          }),
-        });
-      } catch (err) {
-        console.error("Erro na verificação por IA:", err);
-      }
+      // Verificar resposta com IA (fire-and-forget — não bloqueia navegação)
+      console.log("[IA] Disparando verificação para respostaId:", respostaId);
+      fetch('/api/verificar-resposta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pergunta: pergunta.pergunta,
+          resposta: respostaTexto,
+          explicacao: explicacaoTexto,
+          respostaId,
+        }),
+      })
+        .then(res => console.log("[IA] Verificação retornou status:", res.status))
+        .catch(err => console.error("[IA] Erro na verificação por IA:", err));
 
       router.push("/minhas-respostas");
     } catch (error: unknown) {

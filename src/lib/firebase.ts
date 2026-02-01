@@ -1,6 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, Auth, signInWithPopup, onAuthStateChanged, signOut, User, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, doc, updateDoc, deleteDoc, getDoc, where, setDoc, limit, Firestore } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, doc, updateDoc, deleteDoc, getDoc, where, setDoc, limit, Firestore, onSnapshot } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -255,6 +255,53 @@ export const buscarPerguntasComRespostas = async (): Promise<Pergunta[]> => {
     }
     return pergunta;
   });
+};
+
+// Listener em tempo real para perguntas com dados de respostas (usa onSnapshot)
+export const ouvirPerguntasComRespostas = (
+  callback: (perguntas: Pergunta[]) => void
+): (() => void) => {
+  const perguntasQuery = query(collection(getDb(), 'perguntas'), orderBy('criadoEm', 'desc'));
+
+  const unsubscribe = onSnapshot(perguntasQuery, async (perguntasSnapshot) => {
+    const perguntas = perguntasSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Pergunta));
+
+    // Buscar respostas para enriquecer
+    try {
+      const respostasQuery = query(collection(getDb(), 'respostas'));
+      const respostasSnapshot = await getDocs(respostasQuery);
+      const respostasMap = new Map<string, Resposta>();
+      respostasSnapshot.docs.forEach(doc => {
+        const resposta = { id: doc.id, ...doc.data() } as Resposta;
+        respostasMap.set(resposta.perguntaId, resposta);
+      });
+
+      const perguntasEnriquecidas = perguntas.map(pergunta => {
+        if (pergunta.status === 'respondida' && pergunta.id) {
+          const resposta = respostasMap.get(pergunta.id);
+          if (resposta) {
+            return {
+              ...pergunta,
+              respondedorNome: resposta.usuarioNome,
+              respondedorFoto: resposta.usuarioFoto,
+              respostaVerificada: resposta.verificada,
+            };
+          }
+        }
+        return pergunta;
+      });
+
+      callback(perguntasEnriquecidas);
+    } catch (error) {
+      console.error("Erro ao enriquecer perguntas com respostas:", error);
+      callback(perguntas);
+    }
+  });
+
+  return unsubscribe;
 };
 
 export const atualizarPergunta = async (id: string, dados: Partial<Pergunta>) => {

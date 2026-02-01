@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { auth, criarPergunta, buscarPerguntasComRespostas, uploadArquivos, uploadArquivo, atualizarFotoPerfil, Pergunta, buscarRanking, buscarMinhasStats, UserStats, buscarNotificacoes, Notificacao, buscarSaldo, Saldo, criarDenuncia } from "@/lib/firebase";
+import { auth, criarPergunta, buscarPerguntasComRespostas, ouvirPerguntasComRespostas, uploadArquivos, uploadArquivo, atualizarFotoPerfil, Pergunta, buscarRanking, buscarMinhasStats, UserStats, buscarNotificacoes, Notificacao, buscarSaldo, Saldo, criarDenuncia } from "@/lib/firebase";
 import { MoreVerticalIcon, Calendar03Icon, CrownIcon, ArrowDown01Icon, Settings01Icon, Logout01Icon, CompassIcon, MessageQuestionIcon, PencilEdit02Icon, MoneyBag02Icon, Cancel01Icon, Attachment01Icon, InformationCircleIcon, Wallet02Icon, Mail01Icon, CheckmarkCircle02Icon, RankingIcon, Camera01Icon } from "hugeicons-react";
 import { Books, Calculator, Bank, Globe, Dna, PencilLine, Atom, Flask, Brain, Users, Briefcase, GraduationCap, Translate, Palette, FirstAidKit, SoccerBall, ChartLine, Scales, Desktop, PuzzlePiece, Sparkle, MusicNotes, Wrench, House, Question, NotePencil, Wallet, GearSix, SealCheck, SealWarning } from "@phosphor-icons/react";
 import FooterPremium from "@/components/FooterPremium";
@@ -143,19 +143,13 @@ export default function Home() {
     }
   }, [user]);
 
-  // Carregar perguntas do Firestore
+  // Carregar perguntas do Firestore em tempo real
   useEffect(() => {
-    const carregarPerguntas = async () => {
-      try {
-        const dados = await buscarPerguntasComRespostas();
-        setPerguntas(dados);
-      } catch (error) {
-        console.error("Erro ao carregar perguntas:", error);
-      } finally {
-        setCarregando(false);
-      }
-    };
-    carregarPerguntas();
+    const unsubscribe = ouvirPerguntasComRespostas((dados) => {
+      setPerguntas(dados);
+      setCarregando(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   // Fechar menus ao clicar fora
@@ -474,7 +468,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <img src="/logo.svg" alt="Questiongo" className="h-11 w-auto" />
           <span className="text-2xl text-gray-900" style={{ fontFamily: "'Figtree Black', sans-serif" }}>Questiongo</span>
-          <span className="text-xs text-gray-400 ml-2">v2.0</span>
+          <span className="text-xs text-gray-400 ml-2">v2.1</span>
         </div>
 
         {/* Ações do header */}
