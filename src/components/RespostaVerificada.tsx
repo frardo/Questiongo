@@ -26,6 +26,8 @@ interface RespostaVerificadaProps {
   onDenunciar?: () => void;
   avaliacaoAtual?: number;
   avaliacaoEnviada?: boolean;
+  avaliacaoMedia?: number;
+  avaliacaoTotal?: number;
 }
 
 export default function RespostaVerificada({
@@ -35,6 +37,8 @@ export default function RespostaVerificada({
   onDenunciar,
   avaliacaoAtual = 0,
   avaliacaoEnviada = false,
+  avaliacaoMedia,
+  avaliacaoTotal,
 }: RespostaVerificadaProps) {
   const [avaliacao, setAvaliacao] = useState<number>(avaliacaoAtual);
   const [hoverAvaliacao, setHoverAvaliacao] = useState<number>(0);
@@ -274,6 +278,29 @@ export default function RespostaVerificada({
               <p className="text-sm text-green-600 mt-2">Obrigado pela sua avaliação!</p>
             )}
           </div>
+
+          {/* Média de avaliações */}
+          {avaliacaoTotal != null && avaliacaoTotal > 0 && avaliacaoMedia != null && (
+            <div className="flex items-center gap-2 mt-3">
+              <div className="flex items-center">
+                {[1, 2, 3, 4, 5].map((estrela) => (
+                  <div key={estrela} className="relative w-5 h-5">
+                    <StarIcon size={20} className="absolute text-gray-300" />
+                    <div
+                      className="absolute overflow-hidden"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, (avaliacaoMedia - (estrela - 1)) * 100))}%`
+                      }}
+                    >
+                      <StarIcon size={20} className="text-yellow-400" style={{ fill: '#facc15' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <span className="text-sm font-semibold text-gray-700">{avaliacaoMedia.toFixed(1)}</span>
+              <span className="text-sm text-gray-500">({avaliacaoTotal} {avaliacaoTotal === 1 ? 'avaliação' : 'avaliações'})</span>
+            </div>
+          )}
 
           {/* Botão Denunciar */}
           {onDenunciar && (

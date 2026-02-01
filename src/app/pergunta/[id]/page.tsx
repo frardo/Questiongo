@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth, buscarPerguntaPorId, buscarRespostaPorPerguntaId, atualizarResposta, atualizarPergunta, buscarPerguntasPorMateria, denunciarResposta, Pergunta, Resposta } from "@/lib/firebase";
+import { auth, buscarPerguntaPorId, buscarRespostaPorPerguntaId, atualizarResposta, atualizarPergunta, buscarPerguntasPorMateria, denunciarResposta, avaliarResposta, buscarMinhaAvaliacao, Pergunta, Resposta } from "@/lib/firebase";
 import RespostaVerificada from "@/components/RespostaVerificada";
 import DOMPurify from "dompurify";
 import toast from "react-hot-toast";
@@ -97,6 +97,23 @@ export default function VisualizarPergunta() {
 
     carregarDados();
   }, [perguntaId]);
+
+  // Carregar avaliação existente do usuário
+  useEffect(() => {
+    const carregarAvaliacao = async () => {
+      if (!resposta?.id || !user?.uid) return;
+      try {
+        const minhaAvaliacao = await buscarMinhaAvaliacao(resposta.id, user.uid);
+        if (minhaAvaliacao !== null) {
+          setAvaliacao(minhaAvaliacao);
+          setAvaliacaoEnviada(true);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar avaliação:", error);
+      }
+    };
+    carregarAvaliacao();
+  }, [resposta?.id, user?.uid]);
 
   // Polling para atualizar verificação da resposta (se ainda não verificada)
   useEffect(() => {
@@ -542,13 +559,25 @@ export default function VisualizarPergunta() {
                             confiancaIA: resposta.confiancaIA,
                             criadoEm: resposta.criadoEm,
                           }}
-                          onAvaliar={(nota) => {
+                          onAvaliar={async (nota) => {
                             setAvaliacao(nota);
                             setAvaliacaoEnviada(true);
+                            if (resposta?.id && user?.uid) {
+                              try {
+                                await avaliarResposta(resposta.id, user.uid, nota);
+                                // Recarregar resposta para atualizar média
+                                const respostaAtualizada = await buscarRespostaPorPerguntaId(perguntaId);
+                                if (respostaAtualizada) setResposta(respostaAtualizada);
+                              } catch (error) {
+                                console.error("Erro ao salvar avaliação:", error);
+                              }
+                            }
                           }}
                           onDenunciar={() => setModalDenuncia(true)}
                           avaliacaoAtual={avaliacao}
                           avaliacaoEnviada={avaliacaoEnviada}
+                          avaliacaoMedia={resposta.avaliacaoMedia}
+                          avaliacaoTotal={resposta.avaliacaoTotal}
                         />
 
                         {resposta.status === 'aceita' && (

@@ -398,6 +398,10 @@ export interface Resposta {
   confiancaIA?: number;           // 0-100% confiança da IA
   denuncias?: number;             // contador de denúncias
   analisadaPorIA?: boolean;       // se já passou por análise de spam
+  // Campos de avaliação por estrelas
+  avaliacaoMedia?: number;        // média das estrelas (ex: 4.3)
+  avaliacaoTotal?: number;        // quantidade de avaliações
+  avaliacaoSoma?: number;         // soma das notas (para recalcular média)
 }
 
 // Funções de Respostas
@@ -1207,4 +1211,82 @@ export const criarDenuncia = async (denuncia: Omit<Denuncia, 'id' | 'criadoEm' |
     criadoEm: Timestamp.now(),
   });
   return docRef.id;
+};
+
+// ==================== AVALIAÇÃO POR ESTRELAS ====================
+
+// Avaliar uma resposta (cria ou atualiza avaliação)
+export const avaliarResposta = async (
+  respostaId: string,
+  usuarioId: string,
+  nota: number
+): Promise<void> => {
+  // Verificar se usuário já avaliou
+  const q = query(
+    collection(getDb(), 'avaliacoes'),
+    where('respostaId', '==', respostaId),
+    where('usuarioId', '==', usuarioId)
+  );
+  const snapshot = await getDocs(q);
+
+  const respostaRef = doc(getDb(), 'respostas', respostaId);
+  const respostaSnap = await getDoc(respostaRef);
+  if (!respostaSnap.exists()) return;
+
+  const respostaData = respostaSnap.data() as Resposta;
+
+  if (snapshot.docs.length > 0) {
+    // Já avaliou → atualizar nota existente
+    const avaliacaoDoc = snapshot.docs[0];
+    const notaAntiga = avaliacaoDoc.data().nota as number;
+
+    // Atualizar doc da avaliação
+    await updateDoc(doc(getDb(), 'avaliacoes', avaliacaoDoc.id), {
+      nota,
+      atualizadoEm: Timestamp.now(),
+    });
+
+    // Recalcular média: subtrair nota antiga, somar nova
+    const novaSoma = (respostaData.avaliacaoSoma || 0) - notaAntiga + nota;
+    const total = respostaData.avaliacaoTotal || 1;
+    await updateDoc(respostaRef, {
+      avaliacaoSoma: novaSoma,
+      avaliacaoMedia: Math.round((novaSoma / total) * 10) / 10,
+    });
+  } else {
+    // Nova avaliação
+    await addDoc(collection(getDb(), 'avaliacoes'), {
+      respostaId,
+      usuarioId,
+      nota,
+      criadoEm: Timestamp.now(),
+    });
+
+    // Incrementar contadores
+    const novaSoma = (respostaData.avaliacaoSoma || 0) + nota;
+    const novoTotal = (respostaData.avaliacaoTotal || 0) + 1;
+    await updateDoc(respostaRef, {
+      avaliacaoSoma: novaSoma,
+      avaliacaoTotal: novoTotal,
+      avaliacaoMedia: Math.round((novaSoma / novoTotal) * 10) / 10,
+    });
+  }
+};
+
+// Buscar avaliação do usuário para uma resposta
+export const buscarMinhaAvaliacao = async (
+  respostaId: string,
+  usuarioId: string
+): Promise<number | null> => {
+  const q = query(
+    collection(getDb(), 'avaliacoes'),
+    where('respostaId', '==', respostaId),
+    where('usuarioId', '==', usuarioId)
+  );
+  const snapshot = await getDocs(q);
+
+  if (snapshot.docs.length > 0) {
+    return snapshot.docs[0].data().nota as number;
+  }
+  return null;
 };
