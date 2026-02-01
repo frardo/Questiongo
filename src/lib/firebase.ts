@@ -198,17 +198,6 @@ export const criarPergunta = async (pergunta: Omit<Pergunta, 'id' | 'criadoEm'>)
     criadoEm: Timestamp.now(),
   });
 
-  // Incrementar atividade do usuário para o ranking (não bloqueia se falhar)
-  try {
-    await incrementarAtividade(
-      pergunta.usuarioId,
-      pergunta.usuarioNome,
-      pergunta.usuarioFoto
-    );
-  } catch (error) {
-    console.error("Erro ao incrementar atividade (não crítico):", error);
-  }
-
   return docRef.id;
 };
 
@@ -424,17 +413,6 @@ export const criarResposta = async (resposta: Omit<Resposta, 'id' | 'criadoEm'>)
   // Atualizar status da pergunta para 'respondida'
   await atualizarPergunta(resposta.perguntaId, { status: 'respondida' });
 
-  // Incrementar atividade do usuário para o ranking (não bloqueia se falhar)
-  try {
-    await incrementarAtividade(
-      resposta.usuarioId,
-      resposta.usuarioNome,
-      resposta.usuarioFoto
-    );
-  } catch (error) {
-    console.error("Erro ao incrementar atividade (não crítico):", error);
-  }
-
   return docRef.id;
 };
 
@@ -450,6 +428,23 @@ export const atualizarVerificacaoResposta = async (
     verificadaEm: Timestamp.now(),
     confiancaIA: confianca,
   });
+
+  // Incrementar atividade apenas quando a IA verifica como correta
+  if (verificada) {
+    try {
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const dados = docSnap.data() as Resposta;
+        await incrementarAtividade(
+          dados.usuarioId,
+          dados.usuarioNome,
+          dados.usuarioFoto
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao incrementar atividade (não crítico):", error);
+    }
+  }
 };
 
 export const buscarVerificacaoPorPerguntaIds = async (perguntaIds: string[]): Promise<Map<string, boolean>> => {
@@ -888,7 +883,10 @@ export const buscarRanking = async (
 };
 
 // Buscar estatísticas do usuário atual
-export const buscarMinhasStats = async (usuarioId: string): Promise<{
+export const buscarMinhasStats = async (
+  usuarioId: string,
+  periodo: 'diario' | 'semanal' | 'mensal' | 'total' = 'total'
+): Promise<{
   posicao: number;
   atividades: number;
   stats: UserStats | null;
@@ -902,10 +900,32 @@ export const buscarMinhasStats = async (usuarioId: string): Promise<{
 
   const minhasStats = docSnap.data() as UserStats;
 
-  // Buscar posição no ranking (total)
+  // Determinar campo correto baseado no período
+  let campoOrdenacao: string;
+  let atividadesValor: number;
+
+  switch (periodo) {
+    case 'diario':
+      campoOrdenacao = 'atividadesHoje';
+      atividadesValor = minhasStats.atividadesHoje;
+      break;
+    case 'semanal':
+      campoOrdenacao = 'atividadesSemana';
+      atividadesValor = minhasStats.atividadesSemana;
+      break;
+    case 'mensal':
+      campoOrdenacao = 'atividadesMes';
+      atividadesValor = minhasStats.atividadesMes;
+      break;
+    default:
+      campoOrdenacao = 'atividadesTotal';
+      atividadesValor = minhasStats.atividadesTotal;
+  }
+
+  // Buscar posição no ranking pelo período selecionado
   const q = query(
     collection(getDb(), 'userStats'),
-    orderBy('atividadesTotal', 'desc')
+    orderBy(campoOrdenacao, 'desc')
   );
   const querySnapshot = await getDocs(q);
 
@@ -918,7 +938,7 @@ export const buscarMinhasStats = async (usuarioId: string): Promise<{
 
   return {
     posicao,
-    atividades: minhasStats.atividadesTotal,
+    atividades: atividadesValor,
     stats: minhasStats,
   };
 };

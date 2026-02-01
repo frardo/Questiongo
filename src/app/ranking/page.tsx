@@ -152,7 +152,7 @@ export default function RankingPage() {
         setRankingUsuarios(dados);
 
         if (user) {
-          const stats = await buscarMinhasStats(user.uid);
+          const stats = await buscarMinhasStats(user.uid, periodoFirebase);
           setMeuRanking({
             posicao: stats.posicao,
             atividades: stats.atividades
@@ -330,11 +330,15 @@ export default function RankingPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {rankingUsuarios.map((usuario, index) => (
+                  {rankingUsuarios.map((usuario, index) => {
+                    const isCurrentUser = user && usuario.usuarioId === user.uid;
+                    return (
                     <div
                       key={usuario.usuarioId}
                       className={`flex items-center gap-4 p-3 rounded-xl transition-colors ${
-                        index < 3 ? 'bg-gradient-to-r from-yellow-50 to-amber-50' : 'hover:bg-gray-50'
+                        isCurrentUser
+                          ? 'bg-blue-50 ring-2 ring-blue-300'
+                          : index < 3 ? 'bg-gradient-to-r from-yellow-50 to-amber-50' : 'hover:bg-gray-50'
                       }`}
                     >
                       {renderPosicao(index)}
@@ -350,8 +354,8 @@ export default function RankingPage() {
                       </div>
 
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-800">{usuario.usuarioNome}</p>
-                        <p className="text-sm text-gray-500">{getAtividades(usuario)} atividades</p>
+                        <p className={`font-semibold ${isCurrentUser ? 'text-blue-700' : 'text-gray-800'}`}>{isCurrentUser ? 'Você' : usuario.usuarioNome}</p>
+                        <p className={`text-sm ${isCurrentUser ? 'text-blue-600' : 'text-gray-500'}`}>{getAtividades(usuario)} atividades</p>
                       </div>
 
                       {index < 3 && (
@@ -364,10 +368,11 @@ export default function RankingPage() {
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
 
-                  {/* Minha posição */}
-                  {user && meuRanking.posicao > 0 && (
+                  {/* Minha posição - só mostrar se fora do top 20 */}
+                  {user && meuRanking.posicao > 20 && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <div className="flex items-center gap-4 p-3 bg-blue-50 rounded-xl">
                         <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
