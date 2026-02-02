@@ -170,7 +170,6 @@ export default function Carteira() {
       await signOut(auth);
       router.push("/");
     } catch (error) {
-      console.error("Erro ao fazer logout:", error);
     }
   };
 
@@ -197,7 +196,6 @@ export default function Carteira() {
         setSaldo(saldoData);
         setTransacoes(transacoesData);
       } catch (error) {
-        console.error("Erro ao carregar dados:", error);
       } finally {
         setCarregando(false);
       }
@@ -247,7 +245,6 @@ export default function Carteira() {
           setGatewaySalvo(gatewayPreferido);
         }
       } catch (error) {
-        console.error("Erro ao carregar dados de saque:", error);
       } finally {
         setCarregandoChaves(false);
       }
@@ -273,7 +270,6 @@ export default function Carteira() {
           setTitularCpfRecebimento(conta.titularCpf);
         }
       } catch (error) {
-        console.error("Erro ao carregar conta bancária:", error);
       } finally {
         setCarregandoBanco(false);
       }

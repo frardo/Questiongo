@@ -63,7 +63,6 @@ export async function POST(request: NextRequest) {
       sessionId: session.sessionId,
     });
   } catch (error) {
-    console.error('Erro ao criar sessão Stripe:', error);
     return NextResponse.json(
       { error: 'Erro ao criar sessão de pagamento. Tente novamente.' },
       { status: 500 }

@@ -49,7 +49,6 @@ export default function Home() {
       await signOut(auth);
       router.push("/");
     } catch (error) {
-      console.error("Erro ao fazer logout:", error);
     }
   };
 
@@ -132,7 +131,6 @@ export default function Home() {
         const saldoData = await buscarSaldo(user.uid);
         setSaldo(saldoData);
       } catch (error) {
-        console.error("Erro ao carregar saldo:", error);
       }
     };
     if (user) {
@@ -198,7 +196,6 @@ export default function Home() {
           });
         }
       } catch (error) {
-        console.error("Erro ao carregar ranking:", error);
       } finally {
         setCarregandoRanking(false);
       }
@@ -215,7 +212,6 @@ export default function Home() {
         const dados = await buscarNotificacoes(user.uid);
         setNotificacoes(dados);
       } catch (error) {
-        console.error("Erro ao carregar notificações:", error);
       } finally {
         setCarregandoNotificacoes(false);
       }

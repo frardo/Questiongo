@@ -11,6 +11,8 @@ const PROTECTED_API_ROUTES = [
   '/api/assinatura/create-subscription',
   '/api/assinatura/checkout',
   '/api/assinatura/process-payment',
+  '/api/verificar-resposta',
+  '/api/analisar-spam',
 ];
 
 // Rotas públicas (webhooks, etc.)

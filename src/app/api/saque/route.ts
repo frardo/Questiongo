@@ -120,7 +120,6 @@ export async function POST(request: NextRequest) {
         });
 
       } catch (abacateError: unknown) {
-        console.error('Erro AbacatePay:', abacateError);
         return NextResponse.json({
           error: 'Erro ao processar saque. Tente novamente mais tarde.'
         }, { status: 500 });
@@ -137,7 +136,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Gateway inválido' }, { status: 400 });
 
   } catch (error: unknown) {
-    console.error('Erro no saque:', error);
     return NextResponse.json({
       error: 'Erro interno do servidor. Tente novamente.'
     }, { status: 500 });
@@ -163,7 +161,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: unknown) {
-    console.error('Erro ao buscar saque:', error);
     return NextResponse.json({
       error: 'Erro ao buscar informações do saque.'
     }, { status: 500 });

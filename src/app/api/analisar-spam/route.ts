@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY não configurada");
       // Em caso de erro de configuração, não marca como spam (conservador)
       return NextResponse.json({
         spam: false,
@@ -78,7 +77,6 @@ Seja conservador: só marque como spam se tiver certeza.
     });
 
     if (!response.ok) {
-      console.error("Erro na API Gemini:", response.status, await response.text());
       return NextResponse.json({
         spam: false,
         motivo: "Erro ao analisar resposta",
@@ -91,7 +89,6 @@ Seja conservador: só marque como spam se tiver certeza.
     const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!textContent) {
-      console.error("Resposta vazia da API Gemini");
       return NextResponse.json({
         spam: false,
         motivo: "Não foi possível analisar a resposta",
@@ -109,7 +106,6 @@ Seja conservador: só marque como spam se tiver certeza.
       }
       resultado = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
-      console.error("Erro ao parsear resposta do Gemini:", parseError, textContent);
       return NextResponse.json({
         spam: false,
         motivo: "Erro ao processar análise",
@@ -123,7 +119,6 @@ Seja conservador: só marque como spam se tiver certeza.
 
     return NextResponse.json(spamResult);
   } catch (error) {
-    console.error("Erro na análise de spam:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }

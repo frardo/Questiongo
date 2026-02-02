@@ -22,7 +22,6 @@ export async function POST(request: NextRequest) {
       metadata: session.metadata,
     });
   } catch (error) {
-    console.error('Erro ao verificar sessão Stripe:', error);
     return NextResponse.json(
       { error: 'Erro ao verificar pagamento. Tente novamente.' },
       { status: 500 }

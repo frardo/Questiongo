@@ -133,7 +133,7 @@ export default function LandingPage() {
       const firebaseError = error as { code?: string };
       if (firebaseError.code !== "auth/cancelled-popup-request" &&
           firebaseError.code !== "auth/popup-closed-by-user") {
-        console.error("Erro ao fazer login com Apple:", error);
+
       }
     } finally {
       setLoading(false);
@@ -176,14 +176,14 @@ export default function LandingPage() {
             setError("Senha muito fraca. Use pelo menos 6 caracteres");
           } else {
             setError("Erro ao criar conta. Tente novamente.");
-            console.error("Erro:", registerError);
+
           }
         }
       } else if (firebaseError.code === "auth/wrong-password") {
         setError("Senha incorreta");
       } else {
         setError("Erro ao autenticar. Tente novamente.");
-        console.error("Erro:", error);
+
       }
     } finally {
       setLoading(false);

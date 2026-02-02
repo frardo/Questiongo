@@ -36,7 +36,6 @@ export default function MinhasPerguntas() {
       await signOut(auth);
       router.push("/");
     } catch (error) {
-      console.error("Erro ao fazer logout:", error);
     }
   };
 
@@ -109,7 +108,6 @@ export default function MinhasPerguntas() {
         }
         setPerguntas(dados);
       } catch (error) {
-        console.error("Erro ao carregar perguntas:", error);
       } finally {
         setCarregando(false);
       }

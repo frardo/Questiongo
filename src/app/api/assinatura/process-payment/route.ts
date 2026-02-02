@@ -133,7 +133,6 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error: unknown) {
-    console.error('Erro ao processar pagamento:', error);
     return NextResponse.json(
       { error: 'Erro ao processar pagamento. Tente novamente.' },
       { status: 500 }

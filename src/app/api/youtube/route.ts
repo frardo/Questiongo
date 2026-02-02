@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const error = await response.json();
-      console.error('Erro YouTube API:', error);
       return NextResponse.json({ error: 'Erro ao buscar vídeos' }, { status: 500 });
     }
 
@@ -72,7 +71,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ videos });
 
   } catch (error) {
-    console.error('Erro ao buscar vídeos:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar vídeos. Tente novamente.' },
       { status: 500 }

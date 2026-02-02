@@ -37,9 +37,7 @@ export function getAuthInstance(): Auth {
   if (!_auth) {
     _auth = getAuth(getApp());
     // Garantir persistência local (sobrevive a fechar/reabrir navegador)
-    setPersistence(_auth, browserLocalPersistence).catch((err) =>
-      console.error("Erro ao configurar persistência:", err)
-    );
+    setPersistence(_auth, browserLocalPersistence).catch(() => {});
   }
   return _auth;
 }
@@ -160,7 +158,6 @@ export const uploadArquivo = async (arquivo: File, pasta: string = 'perguntas'):
     const data = await response.json();
     return data.url;
   } catch (error) {
-    console.error('Erro no upload:', error);
     throw error instanceof Error ? error : new Error('Erro desconhecido no upload.');
   }
 };
@@ -285,7 +282,6 @@ export const ouvirPerguntasComRespostas = (
 
       callback(perguntasEnriquecidas);
     } catch (error) {
-      console.error("Erro ao enriquecer perguntas com respostas:", error);
       callback(perguntas);
     }
   });
@@ -342,7 +338,6 @@ export const buscarPerguntasPorMateria = async (materia: string, excluirId?: str
 
     return perguntas.slice(0, limite);
   } catch (error) {
-    console.error('Erro ao buscar perguntas por matéria:', error);
     return [];
   }
 };
@@ -360,7 +355,6 @@ export const buscarPerguntasPorUsuario = async (usuarioId: string): Promise<Perg
       ...doc.data()
     } as Pergunta));
   } catch (error) {
-    console.error("Erro na consulta com índice, tentando sem ordenação:", error);
     // Fallback: buscar sem ordenação se o índice não existir
     const q = query(
       collection(getDb(), 'perguntas'),
@@ -446,7 +440,6 @@ export const atualizarVerificacaoResposta = async (
         );
       }
     } catch (error) {
-      console.error("Erro ao incrementar atividade (não crítico):", error);
     }
   }
 };
@@ -500,7 +493,6 @@ export const buscarRespostasPorUsuario = async (usuarioId: string): Promise<Resp
       ...doc.data()
     } as Resposta));
   } catch (error) {
-    console.error("Erro na consulta com índice, tentando sem ordenação:", error);
     const q = query(
       collection(getDb(), 'respostas'),
       where('usuarioId', '==', usuarioId)
@@ -572,7 +564,6 @@ export const buscarNotificacoes = async (usuarioId: string): Promise<Notificacao
     // Ordenar por data (mais recentes primeiro)
     return notificacoes.sort((a, b) => b.criadoEm.toMillis() - a.criadoEm.toMillis());
   } catch (error) {
-    console.error("Erro ao buscar notificações:", error);
     return [];
   }
 };
@@ -622,9 +613,14 @@ export const denunciarResposta = async (respostaId: string): Promise<{
   // Se atingiu 3 denúncias e ainda não foi analisada por IA
   if (novasDenuncias >= 3 && !dados.analisadaPorIA) {
     try {
+      const currentUser = getAuthInstance().currentUser;
+      const token = currentUser ? await currentUser.getIdToken() : '';
       const response = await fetch('/api/analisar-spam', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           pergunta: dados.perguntaTexto || '',
           resposta: dados.resposta,
@@ -648,7 +644,6 @@ export const denunciarResposta = async (respostaId: string): Promise<{
         }
       }
     } catch (error) {
-      console.error("Erro ao analisar spam:", error);
       // Em caso de erro, apenas marca como analisada para não tentar de novo
       await updateDoc(docRef, { analisadaPorIA: true });
     }
@@ -723,7 +718,6 @@ export const buscarPerguntasSalvas = async (usuarioId: string): Promise<Pergunta
 
     return perguntas;
   } catch (error) {
-    console.error("Erro na consulta com índice, tentando sem ordenação:", error);
     // Fallback: buscar sem ordenação
     const q = query(
       collection(getDb(), 'perguntasSalvas'),
@@ -998,7 +992,6 @@ export const buscarTransacoes = async (usuarioId: string): Promise<Transacao[]> 
       ...doc.data()
     } as Transacao));
   } catch (error) {
-    console.error("Erro na consulta com índice, tentando sem ordenação:", error);
     const q = query(
       collection(getDb(), 'transacoes'),
       where('usuarioId', '==', usuarioId)
@@ -1084,7 +1077,6 @@ export const buscarChavesPix = async (usuarioId: string): Promise<ChavePixSalva[
       ...doc.data()
     } as ChavePixSalva));
   } catch (error) {
-    console.error("Erro ao buscar chaves PIX:", error);
     // Fallback sem ordenação
     const q = query(
       collection(getDb(), 'chavesPix'),

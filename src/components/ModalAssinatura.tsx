@@ -228,7 +228,6 @@ export default function ModalAssinatura({ aberto, onFechar }: ModalAssinaturaPro
         setErro(data.error || 'Erro ao processar pagamento');
       }
     } catch (error: any) {
-      console.error('Erro:', error);
       setErro('Erro ao processar pagamento. Tente novamente.');
     } finally {
       setCarregando(false);

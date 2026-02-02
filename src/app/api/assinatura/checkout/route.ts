@@ -87,7 +87,6 @@ export async function POST(request: NextRequest) {
       url: session.url,
     });
   } catch (error) {
-    console.error('Erro ao criar checkout de assinatura:', error);
     return NextResponse.json(
       { error: 'Erro ao criar checkout' },
       { status: 500 }

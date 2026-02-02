@@ -94,8 +94,7 @@ export default function ResponderPergunta() {
         const dados = await buscarPerguntaPorId(id);
         setPergunta(dados);
       } catch (error) {
-        console.error("Erro ao carregar pergunta:", error);
-      } finally {
+        } finally {
         setCarregando(false);
       }
     };
@@ -190,19 +189,20 @@ export default function ResponderPergunta() {
       toast.success("Resposta enviada com sucesso!");
 
       // Verificar resposta com IA (fire-and-forget — não bloqueia navegação)
-      console.log("[IA] Disparando verificação para respostaId:", respostaId);
+      const token = await user.getIdToken();
       fetch('/api/verificar-resposta', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           pergunta: pergunta.pergunta,
           resposta: respostaTexto,
           explicacao: explicacaoTexto,
           respostaId,
         }),
-      })
-        .then(res => console.log("[IA] Verificação retornou status:", res.status))
-        .catch(err => console.error("[IA] Erro na verificação por IA:", err));
+      }).catch(() => {});
 
       router.push("/minhas-respostas");
     } catch (error: unknown) {

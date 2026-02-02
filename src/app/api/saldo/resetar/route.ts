@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Erro ao resetar saldo:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao resetar saldo' },
       { status: 500 }

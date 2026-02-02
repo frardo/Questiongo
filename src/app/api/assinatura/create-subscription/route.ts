@@ -148,7 +148,6 @@ export async function POST(request: NextRequest) {
       type: 'payment',
     });
   } catch (error: unknown) {
-    console.error('Erro ao criar subscription:', error);
     return NextResponse.json(
       { error: 'Erro ao criar assinatura. Tente novamente.' },
       { status: 500 }

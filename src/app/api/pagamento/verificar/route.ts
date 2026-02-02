@@ -151,7 +151,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Erro ao verificar pagamento:', error);
     return NextResponse.json(
       { error: 'Erro ao verificar pagamento. Tente novamente.' },
       { status: 500 }
@@ -244,7 +243,6 @@ async function processarPagamento(perguntaId: string, respostaId: string, amount
       }
     } catch (emailError) {
       // Não falhar o pagamento se o email der erro
-      console.error('Erro ao enviar emails:', emailError);
     }
   }
 }

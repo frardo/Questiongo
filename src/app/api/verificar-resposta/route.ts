@@ -81,7 +81,6 @@ async function chamarGemini(prompt: string): Promise<string> {
 export async function POST(request: NextRequest) {
   try {
     const t0 = Date.now();
-    console.log(`[verificar-resposta] INÍCIO t=0ms`);
 
     const { pergunta, resposta, explicacao, respostaId } = await request.json();
 
@@ -92,7 +91,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[verificar-resposta] JSON parsed t=${Date.now() - t0}ms`, { pergunta, resposta, respostaId: respostaId || "NÃO ENVIADO" });
 
     const prompt = buildPrompt(pergunta, resposta, explicacao);
 
@@ -102,28 +100,21 @@ export async function POST(request: NextRequest) {
 
     if (GROQ_API_KEY) {
       try {
-        console.log(`[verificar-resposta] Chamando Groq t=${Date.now() - t0}ms`);
         textContent = await chamarGroq(prompt);
         provedor = "Groq";
-        console.log(`[verificar-resposta] Groq respondeu t=${Date.now() - t0}ms`);
       } catch (groqError) {
-        console.error("[verificar-resposta] Groq falhou, tentando Gemini:", groqError);
       }
     }
 
     if (!textContent && GEMINI_API_KEY) {
       try {
-        console.log(`[verificar-resposta] Chamando Gemini (fallback) t=${Date.now() - t0}ms`);
         textContent = await chamarGemini(prompt);
         provedor = "Gemini";
-        console.log(`[verificar-resposta] Gemini respondeu t=${Date.now() - t0}ms`);
       } catch (geminiError) {
-        console.error("[verificar-resposta] Gemini também falhou:", geminiError);
       }
     }
 
     if (!textContent) {
-      console.error("[verificar-resposta] Nenhum provedor de IA disponível");
       return NextResponse.json({
         verificada: undefined,
         confianca: 0,
@@ -141,7 +132,6 @@ export async function POST(request: NextRequest) {
       }
       resultado = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
-      console.error(`Erro ao parsear resposta do ${provedor}:`, parseError, "Texto:", textContent);
       return NextResponse.json({
         verificada: undefined,
         confianca: 0,
@@ -155,7 +145,6 @@ export async function POST(request: NextRequest) {
       motivo: resultado.motivo || "Análise concluída",
     };
 
-    console.log(`[verificar-resposta] Verificação IA concluída via ${provedor} t=${Date.now() - t0}ms`, { resultado, verificacaoResult });
 
     // Salvar verificação diretamente no Firestore
     if (respostaId) {
@@ -166,17 +155,13 @@ export async function POST(request: NextRequest) {
           verificadaEm: FieldValue.serverTimestamp(),
           confiancaIA: verificacaoResult.confianca,
         });
-        console.log(`[verificar-resposta] Firestore salvo t=${Date.now() - t0}ms`, { respostaId, verificada: verificacaoResult.verificada });
       } catch (dbError) {
-        console.error("Erro ao salvar verificação no Firestore:", dbError);
       }
     } else {
-      console.warn("respostaId não foi enviado — verificação NÃO salva no Firestore");
     }
 
     return NextResponse.json(verificacaoResult);
   } catch (error) {
-    console.error("Erro na verificação de resposta:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }

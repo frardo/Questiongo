@@ -89,7 +89,6 @@ export default function VisualizarPergunta() {
           setResposta(respostaData);
         }
       } catch (error) {
-        console.error("Erro ao carregar dados:", error);
       } finally {
         setCarregando(false);
       }
@@ -109,7 +108,6 @@ export default function VisualizarPergunta() {
           setAvaliacaoEnviada(true);
         }
       } catch (error) {
-        console.error("Erro ao carregar avaliação:", error);
       }
     };
     carregarAvaliacao();
@@ -127,7 +125,6 @@ export default function VisualizarPergunta() {
           clearInterval(interval);
         }
       } catch (error) {
-        console.error("Erro ao atualizar resposta:", error);
       }
     }, 3000); // Verifica a cada 3 segundos
 
@@ -158,7 +155,6 @@ export default function VisualizarPergunta() {
           setVideos([]);
         }
       } catch (error) {
-        console.error('Erro ao buscar vídeos:', error);
         setVideos([]);
       } finally {
         setCarregandoVideos(false);
@@ -177,7 +173,6 @@ export default function VisualizarPergunta() {
         const outras = await buscarPerguntasPorMateria(pergunta.materia, perguntaId, 4);
         setOutrasPerguntas(outras);
       } catch (error) {
-        console.error('Erro ao buscar outras perguntas:', error);
       }
     };
 
@@ -211,7 +206,6 @@ export default function VisualizarPergunta() {
           setPergunta(prev => prev ? { ...prev, status: 'respondida' } : null);
         }
       } catch (error) {
-        console.error("Erro ao verificar pagamento:", error);
       } finally {
         setVerificandoPagamento(false);
       }
@@ -297,7 +291,6 @@ export default function VisualizarPergunta() {
         setMensagemPagamento(data.message || 'Pagamento ainda não identificado.');
       }
     } catch (error) {
-      console.error("Erro ao verificar pagamento:", error);
       setMensagemPagamento('Erro ao verificar. Tente novamente.');
     } finally {
       setVerificandoPagamento(false);
@@ -569,7 +562,6 @@ export default function VisualizarPergunta() {
                                 const respostaAtualizada = await buscarRespostaPorPerguntaId(perguntaId);
                                 if (respostaAtualizada) setResposta(respostaAtualizada);
                               } catch (error) {
-                                console.error("Erro ao salvar avaliação:", error);
                               }
                             }
                           }}

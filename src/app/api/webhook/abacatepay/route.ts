@@ -48,18 +48,15 @@ export async function POST(request: NextRequest) {
       if (signature) {
         // Verificação HMAC preferida
         if (!verificarAssinaturaHMAC(rawBody, signature, webhookSecret)) {
-          console.error('Assinatura HMAC inválida no webhook AbacatePay');
           return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
         }
       } else if (headerSecret) {
         // Fallback para verificação de secret simples
         if (headerSecret !== webhookSecret) {
-          console.error('Webhook secret inválido');
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
       } else {
         // Nenhuma forma de autenticação presente
-        console.error('Nenhuma assinatura ou secret encontrado no webhook');
         return NextResponse.json({ error: 'Missing authentication' }, { status: 401 });
       }
     }
@@ -69,7 +66,6 @@ export async function POST(request: NextRequest) {
     try {
       event = JSON.parse(rawBody);
     } catch {
-      console.error('Payload JSON inválido no webhook');
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
 
@@ -175,7 +171,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Erro ao processar webhook:', error);
     return NextResponse.json(
       { error: 'Erro interno' },
       { status: 500 }

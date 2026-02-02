@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('stripe-signature');
 
     if (!signature) {
-      console.error('Assinatura Stripe não encontrada');
       return NextResponse.json({ error: 'Assinatura não encontrada' }, { status: 400 });
     }
 
@@ -21,7 +20,6 @@ export async function POST(request: NextRequest) {
     try {
       event = construirEventoWebhook(body, signature);
     } catch (err) {
-      console.error('Erro ao verificar assinatura webhook:', err);
       return NextResponse.json({ error: 'Assinatura inválida' }, { status: 401 });
     }
 
@@ -181,7 +179,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Erro ao processar webhook Stripe:', error);
     return NextResponse.json(
       { error: 'Erro interno' },
       { status: 500 }

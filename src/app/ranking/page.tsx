@@ -138,7 +138,6 @@ export default function RankingPage() {
 
       setRespondedoresStats(statsArray);
     } catch (error) {
-      console.error('Erro ao buscar stats de respondedores:', error);
     }
   };
 
@@ -162,7 +161,6 @@ export default function RankingPage() {
         // Buscar stats de respondedores
         await buscarRespondedoresStats(materiaFiltro);
       } catch (error) {
-        console.error("Erro ao carregar ranking:", error);
       } finally {
         setCarregando(false);
       }

@@ -37,7 +37,6 @@ export default function MinhasRespostas() {
       await signOut(auth);
       router.push("/");
     } catch (error) {
-      console.error("Erro ao fazer logout:", error);
     }
   };
 
@@ -100,7 +99,6 @@ export default function MinhasRespostas() {
         const dados = await buscarRespostasPorUsuario(user.uid);
         setRespostas(dados);
       } catch (error) {
-        console.error("Erro ao carregar respostas:", error);
       } finally {
         setCarregando(false);
       }

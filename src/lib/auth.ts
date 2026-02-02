@@ -35,7 +35,6 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
       name: decodedToken.name,
     };
   } catch (error) {
-    console.error('Erro ao verificar token:', error);
     return null;
   }
 }
