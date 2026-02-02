@@ -126,13 +126,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Gateway Stripe (TODO: implementar)
-    if (gateway === 'stripe') {
-      return NextResponse.json({
-        error: 'Saques via Stripe ainda não implementados'
-      }, { status: 501 });
-    }
-
     return NextResponse.json({ error: 'Gateway inválido' }, { status: 400 });
 
   } catch (error: unknown) {

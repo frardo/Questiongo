@@ -31,7 +31,7 @@ export const saqueSchema = z.object({
   chavePix: z.string().min(1, 'Chave PIX é obrigatória'),
   tipoChave: z.enum(['cpf', 'cnpj', 'email', 'telefone', 'aleatoria']).optional(),
   descricao: z.string().max(200).optional(),
-  gateway: z.enum(['abacatepay', 'stripe']).default('abacatepay'),
+  gateway: z.enum(['abacatepay']).default('abacatepay'),
 });
 
 /**

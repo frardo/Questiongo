@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { auth, buscarSaldo, buscarTransacoes, Saldo, Transacao, buscarChavesPix, salvarChavePix, removerChavePix, ChavePixSalva, buscarPreferenciaGateway, salvarPreferenciaGateway, buscarContaBancaria, salvarContaBancaria, ContaBancaria } from "@/lib/firebase";
+import { auth, buscarSaldo, buscarTransacoes, buscarSaldoPendente, Saldo, Transacao, buscarChavesPix, salvarChavePix, removerChavePix, ChavePixSalva, buscarPreferenciaGateway, salvarPreferenciaGateway, buscarContaBancaria, salvarContaBancaria, ContaBancaria } from "@/lib/firebase";
 import {
   Settings01Icon,
   Logout01Icon,
@@ -136,8 +136,8 @@ export default function Carteira() {
   const [processando, setProcessando] = useState(false);
 
   // Estado do gateway de pagamento
-  const [gatewayPagamento, setGatewayPagamento] = useState<'stripe' | 'abacatepay'>('stripe');
-  const [gatewaySalvo, setGatewaySalvo] = useState<'stripe' | 'abacatepay' | null>(null);
+  const [gatewayPagamento, setGatewayPagamento] = useState<'abacatepay'>('abacatepay');
+  const [gatewaySalvo, setGatewaySalvo] = useState<'abacatepay' | null>(null);
 
   // Estado do modal de banco
   const [modalBancoAberto, setModalBancoAberto] = useState(false);
@@ -163,7 +163,7 @@ export default function Carteira() {
   const saldoDisponivel = saldo?.saldoDisponivel || 0;
   const totalGanho = saldo?.totalGanho || 0;
   const totalSacado = saldo?.totalSacado || 0;
-  const saldoPendente = 0; // TODO: implementar saldo pendente quando necessário
+  const [saldoPendente, setSaldoPendente] = useState(0);
 
   const handleLogout = async () => {
     try {
@@ -189,12 +189,14 @@ export default function Carteira() {
     const carregarDados = async () => {
       if (!user) return;
       try {
-        const [saldoData, transacoesData] = await Promise.all([
+        const [saldoData, transacoesData, pendente] = await Promise.all([
           buscarSaldo(user.uid),
-          buscarTransacoes(user.uid)
+          buscarTransacoes(user.uid),
+          buscarSaldoPendente(user.uid)
         ]);
         setSaldo(saldoData);
         setTransacoes(transacoesData);
+        setSaldoPendente(pendente);
       } catch (error) {
       } finally {
         setCarregando(false);
@@ -239,11 +241,9 @@ export default function Carteira() {
           setUsarNovaChave(true);
         }
 
-        // Carregar gateway preferido se existir
-        if (gatewayPreferido) {
-          setGatewayPagamento(gatewayPreferido);
-          setGatewaySalvo(gatewayPreferido);
-        }
+        // Gateway fixo em abacatepay (Stripe não suporta saques)
+        setGatewayPagamento('abacatepay');
+        setGatewaySalvo('abacatepay');
       } catch (error) {
       } finally {
         setCarregandoChaves(false);
@@ -458,7 +458,7 @@ export default function Carteira() {
     setTitularNome('');
     setTitularCpf('');
     // Reset gateway para o padrão (será carregado novamente quando abrir)
-    setGatewayPagamento('stripe');
+    setGatewayPagamento('abacatepay');
     setGatewaySalvo(null);
   };
 
@@ -839,48 +839,17 @@ export default function Carteira() {
                     <label className="block text-sm text-gray-600 mb-3" style={{ fontFamily: 'var(--font-medium)' }}>
                       Processador de pagamento
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => setGatewayPagamento('stripe')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors cursor-pointer ${
-                          gatewayPagamento === 'stripe'
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${gatewayPagamento === 'stripe' ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                            <path d="M13.479 9.883c-1.626-.604-2.512-1.067-2.512-1.803 0-.622.511-.977 1.423-.977 1.534 0 3.125.622 4.205 1.12l.613-3.769c-.906-.427-2.581-1.022-4.818-1.022-1.534 0-2.819.391-3.725 1.11-.942.746-1.436 1.836-1.436 3.116 0 2.332 1.436 3.358 3.738 4.179 1.514.533 2.058 1.067 2.058 1.836 0 .711-.587 1.156-1.654 1.156-1.253 0-3.335-.551-4.681-1.315l-.64 3.858c1.022.516 3.069 1.067 5.137 1.067 1.618 0 2.999-.391 3.949-1.138.992-.782 1.52-1.933 1.52-3.374 0-2.436-1.472-3.446-3.177-4.044z" fill={gatewayPagamento === 'stripe' ? '#7C3AED' : '#6B7280'}/>
-                          </svg>
-                        </div>
-                        <span className={gatewayPagamento === 'stripe' ? 'text-purple-700' : 'text-gray-600'} style={{ fontFamily: 'var(--font-semibold)' }}>
-                          Stripe
-                        </span>
-                        <span className="text-xs text-gray-500 text-center">Cartão internacional</span>
-                      </button>
-                      <button
-                        onClick={() => setGatewayPagamento('abacatepay')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors cursor-pointer ${
-                          gatewayPagamento === 'abacatepay'
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${gatewayPagamento === 'abacatepay' ? 'bg-green-100' : 'bg-gray-100'}`}>
-                          <span className="text-xl">{gatewayPagamento === 'abacatepay' ? '🥑' : '🥑'}</span>
-                        </div>
-                        <span className={gatewayPagamento === 'abacatepay' ? 'text-green-700' : 'text-gray-600'} style={{ fontFamily: 'var(--font-semibold)' }}>
+                    <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-green-500 bg-green-50">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-100">
+                        <span className="text-xl">🥑</span>
+                      </div>
+                      <div>
+                        <span className="text-green-700" style={{ fontFamily: 'var(--font-semibold)' }}>
                           AbacatePay
                         </span>
-                        <span className="text-xs text-gray-500 text-center">PIX e boleto Brasil</span>
-                      </button>
+                        <p className="text-xs text-gray-500">PIX e boleto Brasil</p>
+                      </div>
                     </div>
-                    {gatewaySalvo && (
-                      <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                        <CheckmarkCircle02Icon size={14} className="text-green-500" />
-                        Gateway preferido salvo: {gatewaySalvo === 'stripe' ? 'Stripe' : 'AbacatePay'}
-                      </p>
-                    )}
                   </div>
 
                   {/* Método de saque */}
@@ -1275,20 +1244,9 @@ export default function Carteira() {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-500">Processador</span>
-                        <span className={`text-sm flex items-center gap-2 ${gatewayPagamento === 'stripe' ? 'text-purple-700' : 'text-green-700'}`} style={{ fontFamily: 'var(--font-medium)' }}>
-                          {gatewayPagamento === 'stripe' ? (
-                            <>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <path d="M13.479 9.883c-1.626-.604-2.512-1.067-2.512-1.803 0-.622.511-.977 1.423-.977 1.534 0 3.125.622 4.205 1.12l.613-3.769c-.906-.427-2.581-1.022-4.818-1.022-1.534 0-2.819.391-3.725 1.11-.942.746-1.436 1.836-1.436 3.116 0 2.332 1.436 3.358 3.738 4.179 1.514.533 2.058 1.067 2.058 1.836 0 .711-.587 1.156-1.654 1.156-1.253 0-3.335-.551-4.681-1.315l-.64 3.858c1.022.516 3.069 1.067 5.137 1.067 1.618 0 2.999-.391 3.949-1.138.992-.782 1.52-1.933 1.52-3.374 0-2.436-1.472-3.446-3.177-4.044z" fill="#7C3AED"/>
-                              </svg>
-                              Stripe
-                            </>
-                          ) : (
-                            <>
-                              <span>🥑</span>
-                              AbacatePay
-                            </>
-                          )}
+                        <span className="text-sm flex items-center gap-2 text-green-700" style={{ fontFamily: 'var(--font-medium)' }}>
+                          <span>🥑</span>
+                          AbacatePay
                         </span>
                       </div>
                       <div className="flex justify-between">

@@ -1005,6 +1005,25 @@ export const buscarTransacoes = async (usuarioId: string): Promise<Transacao[]> 
   }
 };
 
+// Buscar saldo pendente (soma de transações credito com status pendente)
+export const buscarSaldoPendente = async (usuarioId: string): Promise<number> => {
+  try {
+    const q = query(
+      collection(getDb(), 'transacoes'),
+      where('usuarioId', '==', usuarioId),
+      where('tipo', '==', 'credito'),
+      where('status', '==', 'pendente')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.reduce((total, doc) => {
+      const data = doc.data();
+      return total + (data.valor || 0);
+    }, 0);
+  } catch (error) {
+    return 0;
+  }
+};
+
 // Calcular ganhos por período
 export const calcularGanhosPorPeriodo = async (
   usuarioId: string,
